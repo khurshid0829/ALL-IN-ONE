@@ -7,6 +7,7 @@ import FounderDashboard from './pages/FounderDashboard'
 import RolePlaceholder from './pages/RolePlaceholder'
 import MfaSetup from './pages/MfaSetup'
 import MfaChallenge from './pages/MfaChallenge'
+import ArchiveManager from './pages/ArchiveManager'
 
 const MFA_MANDATORY_ROLES = ['Founder', 'Bigmanager']
 
@@ -14,6 +15,7 @@ export default function App() {
   const { session, profile, loading, error } = useAppSession()
   const { mfaLoading, hasVerifiedTotp, needsChallenge, refreshMfaStatus } = useMfaStatus(session)
   const [skippedOptionalSetup, setSkippedOptionalSetup] = useState(false)
+  const [view, setView] = useState('main')
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -61,8 +63,23 @@ export default function App() {
     )
   }
 
+  if (view === 'archive') {
+    return (
+      <ArchiveManager
+        role={profile?.role}
+        onBack={() => setView('main')}
+        onSignOut={handleSignOut}
+      />
+    )
+  }
+
   if (profile?.role === 'Founder') {
-    return <FounderDashboard onSignOut={handleSignOut} />
+    return (
+      <FounderDashboard
+        onSignOut={handleSignOut}
+        onOpenArchive={() => setView('archive')}
+      />
+    )
   }
 
   return (
@@ -70,6 +87,7 @@ export default function App() {
       role={profile?.role ?? 'Nomaʼlum'}
       departmentName={profile?.departmentName}
       onSignOut={handleSignOut}
+      onOpenArchive={() => setView('archive')}
     />
   )
 }
