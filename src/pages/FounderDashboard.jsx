@@ -11,7 +11,7 @@ function usd(value) {
   return '$' + numberFmt.format(Number(value) || 0)
 }
 
-export default function FounderDashboard({ onSignOut }) {
+export default function FounderDashboard({ onSignOut, onOpenArchive }) {
   const [debtRows, setDebtRows] = useState([])
   const [closingRows, setClosingRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -55,10 +55,15 @@ export default function FounderDashboard({ onSignOut }) {
   return (
     <div style={styles.shell}>
       <header style={styles.header}>
-        <span style={styles.brand}>Yagona Boshqaruv Tizimi &middot; Founder</span>
-        <button style={styles.signOutBtn} onClick={onSignOut}>
-          Chiqish
-        </button>
+      <span style={styles.brand}>Yagona Boshqaruv Tizimi &middot; Founder</span>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button style={styles.signOutBtn} onClick={onOpenArchive}>
+            Arxiv
+          </button>
+          <button style={styles.signOutBtn} onClick={onSignOut}>
+            Chiqish
+          </button>
+        </div>
       </header>
 
       <main style={styles.main}>
