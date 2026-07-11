@@ -1,11 +1,19 @@
+import { useState } from 'react'
 import { useAppSession } from './lib/useAppSession'
+import { useMfaStatus } from './lib/useMfaStatus'
 import { supabase } from './lib/supabaseClient'
 import Login from './pages/Login'
 import FounderDashboard from './pages/FounderDashboard'
 import RolePlaceholder from './pages/RolePlaceholder'
+import MfaSetup from './pages/MfaSetup'
+import MfaChallenge from './pages/MfaChallenge'
+
+const MFA_MANDATORY_ROLES = ['Founder', 'Bigmanager']
 
 export default function App() {
   const { session, profile, loading, error } = useAppSession()
+  const { mfaLoading, hasVerifiedTotp, needsChallenge, refreshMfaStatus } = useMfaStatus(session)
+  const [skippedOptionalSetup, setSkippedOptionalSetup] = useState(false)
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -15,7 +23,7 @@ export default function App() {
     return <Login />
   }
 
-  if (loading) {
+  if (loading || mfaLoading) {
     return <CenteredMessage text="Yuklanmoqda..." />
   }
 
@@ -28,6 +36,27 @@ export default function App() {
           error
         }
         onSignOut={handleSignOut}
+      />
+    )
+  }
+
+  if (needsChallenge) {
+    return <MfaChallenge onVerified={refreshMfaStatus} onSignOut={handleSignOut} />
+  }
+
+  const isMandatoryRole = MFA_MANDATORY_ROLES.includes(profile?.role)
+
+  if (isMandatoryRole && !hasVerifiedTotp) {
+    return <MfaSetup mandatory onEnrolled={refreshMfaStatus} onSignOut={handleSignOut} />
+  }
+
+  if (!isMandatoryRole && !hasVerifiedTotp && !skippedOptionalSetup) {
+    return (
+      <MfaSetup
+        mandatory={false}
+        onEnrolled={refreshMfaStatus}
+        onSignOut={handleSignOut}
+        onSkip={() => setSkippedOptionalSetup(true)}
       />
     )
   }
