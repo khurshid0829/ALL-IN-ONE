@@ -9,7 +9,7 @@ export default function FounderDashboard({ onSignOut }) {
       </header>
 
       <main style={styles.panel}>
-        <h1 style={styles.title}>Kirish tizimi ishladi \u2705</h1>
+       <h1 style={styles.title}>Kirish tizimi ishladi ✅</h1>
         <p style={styles.text}>
           Siz Founder sifatida tizimga muvaffaqiyatli kirdingiz. Bu &mdash;
           hozircha vaqtinchalik sahifa: haqiqiy Founder Dashboard (mijozlar
