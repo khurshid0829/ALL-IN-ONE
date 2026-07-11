@@ -1,11 +1,23 @@
-export default function RolePlaceholder({ role, departmentName, onSignOut }) {
+export default function RolePlaceholder({
+  role,
+  departmentName,
+  onSignOut,
+  onOpenArchive,
+}) {
   return (
     <div style={styles.shell}>
       <header style={styles.header}>
         <span style={styles.brand}>Yagona Boshqaruv Tizimi</span>
-        <button style={styles.signOutBtn} onClick={onSignOut}>
-          Chiqish
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {role === 'Bigmanager' && (
+            <button style={styles.signOutBtn} onClick={onOpenArchive}>
+              Arxiv
+            </button>
+          )}
+          <button style={styles.signOutBtn} onClick={onSignOut}>
+            Chiqish
+          </button>
+        </div>
       </header>
 
       <main style={styles.panel}>
