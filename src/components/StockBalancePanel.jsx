@@ -65,6 +65,7 @@ export default function StockBalancePanel({ departmentId }) {
         .select('id, sku_code, display_name, unit, category, min_stock_level, tur')
         .eq('department_id', departmentId)
         .eq('is_archived', false)
+        .eq('tur', 'XOM')
         .order('category', { ascending: true })
         .order('display_name', { ascending: true })
         .limit(1000),
