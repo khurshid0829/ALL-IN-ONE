@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import SearchSelect from '../components/SearchSelect'
+import StockBalancePanel from '../components/StockBalancePanel'
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -34,24 +35,31 @@ export default function WarehouseEntryScreen({
 
   const [recentEntries, setRecentEntries] = useState([])
   const [loadingRecent, setLoadingRecent] = useState(true)
+  const [dateFilter, setDateFilter] = useState('') // bo'sh = filtrsiz, oxirgi 15 ta
 
   const loadRecent = useCallback(async () => {
     setLoadingRecent(true)
-    const { data, error } = await supabase
+    let query = supabase
       .from('warehouse_entries')
       .select(
         'id, entry_date, qty_in, qty_out, expected_qty_out, note, created_at, sku_master(sku_code, display_name, unit)'
       )
       .eq('department_id', departmentId)
       .eq('is_archived', false)
-      .order('created_at', { ascending: false })
-      .limit(15)
+
+    if (dateFilter) {
+      query = query.eq('entry_date', dateFilter).order('created_at', { ascending: false }).limit(200)
+    } else {
+      query = query.order('created_at', { ascending: false }).limit(15)
+    }
+
+    const { data, error } = await query
 
     if (!error) {
       setRecentEntries(data ?? [])
     }
     setLoadingRecent(false)
-  }, [departmentId])
+  }, [departmentId, dateFilter])
 
   useEffect(() => {
     loadRecent()
@@ -233,8 +241,29 @@ export default function WarehouseEntryScreen({
           </form>
         </div>
 
+        <StockBalancePanel departmentId={departmentId} />
+
         <div style={styles.panel}>
-          <h2 style={styles.panelTitle}>So'nggi yozuvlar</h2>
+          <div style={styles.headerRow}>
+            <h2 style={{ ...styles.panelTitle, margin: 0 }}>So'nggi yozuvlar</h2>
+            <div style={styles.dateFilterRow}>
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                style={styles.dateFilterInput}
+              />
+              {dateFilter && (
+                <button
+                  type="button"
+                  style={styles.refreshBtn}
+                  onClick={() => setDateFilter('')}
+                >
+                  Tozalash
+                </button>
+              )}
+            </div>
+          </div>
 
           {loadingRecent && <p style={styles.statusText}>Yuklanmoqda...</p>}
 
@@ -304,12 +333,38 @@ const styles = {
     fontSize: 13,
   },
   main: {
-    maxWidth: 760,
+    maxWidth: 900,
     margin: '32px auto',
     padding: '0 24px 48px',
     display: 'flex',
     flexDirection: 'column',
     gap: 24,
+  },
+  headerRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 16,
+  },
+  dateFilterRow: { display: 'flex', gap: 8, alignItems: 'center' },
+  dateFilterInput: {
+    padding: '7px 10px',
+    borderRadius: 'var(--radius-control)',
+    border: '1px solid var(--shell-line)',
+    background: '#fff',
+    color: 'var(--canvas-text)',
+    fontSize: 13,
+  },
+  refreshBtn: {
+    background: 'transparent',
+    border: '1px solid var(--canvas-text-muted)',
+    color: 'var(--canvas-text-muted)',
+    padding: '6px 10px',
+    borderRadius: 'var(--radius-control)',
+    cursor: 'pointer',
+    fontSize: 12,
   },
   panel: {
     background: 'var(--canvas)',
