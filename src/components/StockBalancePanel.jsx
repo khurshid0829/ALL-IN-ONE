@@ -13,6 +13,18 @@ function currentMonthKey() {
   return new Date().toISOString().slice(0, 7) // 'YYYY-MM'
 }
 
+function monthDateRange() {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), 1)
+  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  const toIso = (d) => d.toISOString().slice(0, 10)
+  return {
+    startIso: toIso(start),
+    nextMonthStartIso: toIso(nextMonthStart),
+    daysElapsed: now.getDate(), // oyning necha kuni o'tgani (masalan 12)
+  }
+}
+
 /**
  * StockBalancePanel — joriy ombor qoldig'ini ko'rsatadi.
  *
@@ -34,11 +46,12 @@ export default function StockBalancePanel({ departmentId }) {
     setErrorMsg(null)
 
     const monthKey = currentMonthKey()
+    const { startIso, nextMonthStartIso, daysElapsed } = monthDateRange()
 
-    const [skuRes, balanceRes] = await Promise.all([
+    const [skuRes, balanceRes, entriesRes] = await Promise.all([
       supabase
         .from('sku_master')
-        .select('id, sku_code, display_name, unit, category, min_stock_level')
+        .select('id, sku_code, display_name, unit, category, min_stock_level, tur')
         .eq('department_id', departmentId)
         .eq('is_archived', false)
         .order('category', { ascending: true })
@@ -49,6 +62,14 @@ export default function StockBalancePanel({ departmentId }) {
         .select('sku_id, current_qty')
         .eq('department_id', departmentId)
         .eq('month_key', monthKey),
+      supabase
+        .from('warehouse_entries')
+        .select('sku_id, qty_in, qty_out')
+        .eq('department_id', departmentId)
+        .eq('is_archived', false)
+        .gte('entry_date', startIso)
+        .lt('entry_date', nextMonthStartIso)
+        .limit(5000),
     ])
 
     if (skuRes.error) {
@@ -61,10 +82,25 @@ export default function StockBalancePanel({ departmentId }) {
       setLoading(false)
       return
     }
+    if (entriesRes.error) {
+      setErrorMsg('Kirim/chiqimni yuklashda xatolik: ' + entriesRes.error.message)
+      setLoading(false)
+      return
+    }
 
     const balanceMap = new Map(
       (balanceRes.data || []).map((r) => [r.sku_id, r.current_qty])
     )
+
+    // Har bir SKU uchun shu oydagi umumiy kirim/chiqimni yig'amiz
+    const totalsMap = new Map()
+    for (const entry of entriesRes.data || []) {
+      const prev = totalsMap.get(entry.sku_id) || { totalIn: 0, totalOut: 0 }
+      totalsMap.set(entry.sku_id, {
+        totalIn: prev.totalIn + Number(entry.qty_in || 0),
+        totalOut: prev.totalOut + Number(entry.qty_out || 0),
+      })
+    }
 
     const merged = (skuRes.data || []).map((sku) => {
       const currentQty = balanceMap.has(sku.id) ? balanceMap.get(sku.id) : null
@@ -72,7 +108,17 @@ export default function StockBalancePanel({ departmentId }) {
         sku.min_stock_level != null &&
         currentQty != null &&
         Number(currentQty) < Number(sku.min_stock_level)
-      return { ...sku, current_qty: currentQty, is_low: isLow }
+      const totals = totalsMap.get(sku.id) || { totalIn: 0, totalOut: 0 }
+      const avgDailyOut =
+        sku.tur === 'XOM' && daysElapsed > 0 ? totals.totalOut / daysElapsed : null
+      return {
+        ...sku,
+        current_qty: currentQty,
+        is_low: isLow,
+        total_in: totals.totalIn,
+        total_out: totals.totalOut,
+        avg_daily_out: avgDailyOut,
+      }
     })
 
     setRows(merged)
@@ -155,6 +201,8 @@ export default function StockBalancePanel({ departmentId }) {
                 <th style={styles.th}>SKU</th>
                 <th style={styles.th}>Nomi</th>
                 <th style={styles.thRight}>Joriy qoldiq</th>
+                <th style={styles.thRight}>Bu oy kirim</th>
+                <th style={styles.thRight}>Bu oy chiqim</th>
                 <th style={styles.thRight}>Minimal</th>
                 <th style={styles.th}>Holat</th>
               </tr>
@@ -167,6 +215,17 @@ export default function StockBalancePanel({ departmentId }) {
                   <td style={styles.tdRight} className="mono-figure">
                     {formatQty(row.current_qty)}
                     {row.current_qty != null && row.unit ? ` ${row.unit}` : ''}
+                  </td>
+                  <td style={styles.tdRight} className="mono-figure">
+                    {formatQty(row.total_in)}
+                  </td>
+                  <td style={styles.tdRight} className="mono-figure">
+                    {formatQty(row.total_out)}
+                    {row.avg_daily_out != null && (
+                      <div style={styles.avgNote}>
+                        o'rtacha: {formatQty(row.avg_daily_out)}/kun
+                      </div>
+                    )}
                   </td>
                   <td style={styles.tdRight} className="mono-figure">
                     {formatQty(row.min_stock_level)}
@@ -192,7 +251,10 @@ export default function StockBalancePanel({ departmentId }) {
         mahsulot uchun to'ldirgach, "Kam qoldi" ogohlantirishi ishlay boshlaydi.
         Shuningdek, agar biror mahsulot uchun bu oy uchun ochilish qoldig'i
         (warehouse_opening) kiritilmagan bo'lsa, Joriy qoldiq "&mdash;" bo'lib
-        ko'rinadi.
+        ko'rinadi. "Bu oy kirim/chiqim" &mdash; joriy oy boshidan bugungacha
+        yig'ilgan umumiy miqdor. "O'rtacha: .../kun" faqat xomashyo (XOM)
+        turidagi mahsulotlarda ko'rinadi &mdash; joriy oy chiqimining
+        o'tgan kunlar soniga bo'lingan qiymati.
       </p>
     </div>
   )
@@ -324,5 +386,11 @@ const styles = {
     fontSize: 12,
     color: 'var(--canvas-text-muted)',
     lineHeight: 1.5,
+  },
+  avgNote: {
+    fontSize: 11,
+    color: 'var(--canvas-text-muted)',
+    fontWeight: 400,
+    marginTop: 2,
   },
 }
