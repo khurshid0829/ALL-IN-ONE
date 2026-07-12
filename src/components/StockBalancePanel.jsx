@@ -1,91 +1,7 @@
 import { useState, useEffect, useCallback, Fragment } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { formatQty } from '../lib/formatNumbers'
-import ColumnFilterIcon from './ColumnFilterIcon'
-import NumberInput from './NumberInput'
 import '../styles/dataTable.css'
-
-const STATUS_OPTIONS = [
-  { key: 'low', label: 'Kam qoldi' },
-  { key: 'ok', label: 'Yetarli' },
-  { key: 'unknown', label: "Noma'lum" },
-]
-
-function RangeFilterPanel({ value, onApply, onClear, close }) {
-  const [min, setMin] = useState(value.min || '')
-  const [max, setMax] = useState(value.max || '')
-  const inputStyle = { padding: '5px 7px', fontSize: 12, borderRadius: 6, border: '1px solid var(--shell-line)' }
-  return (
-    <>
-      <div className="col-filter__row">
-        <label>Min</label>
-        <NumberInput value={min} onChange={setMin} style={inputStyle} placeholder="\u2014" />
-      </div>
-      <div className="col-filter__row">
-        <label>Max</label>
-        <NumberInput value={max} onChange={setMax} style={inputStyle} placeholder="\u2014" />
-      </div>
-      <div className="col-filter__actions">
-        <button
-          type="button"
-          className="col-filter__clear-btn"
-          onClick={() => { onClear(); close() }}
-        >
-          Tozalash
-        </button>
-        <button
-          type="button"
-          className="col-filter__apply-btn"
-          onClick={() => { onApply({ min, max }); close() }}
-        >
-          Qo'llash
-        </button>
-      </div>
-    </>
-  )
-}
-
-function StatusFilterPanel({ value, onApply, onClear, close }) {
-  const [selected, setSelected] = useState(new Set(value))
-  function toggle(key) {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
-  return (
-    <>
-      {STATUS_OPTIONS.map((opt) => (
-        <label key={opt.key} className="col-filter__check">
-          <input
-            type="checkbox"
-            checked={selected.has(opt.key)}
-            onChange={() => toggle(opt.key)}
-          />
-          {opt.label}
-        </label>
-      ))}
-      <div className="col-filter__actions">
-        <button
-          type="button"
-          className="col-filter__clear-btn"
-          onClick={() => { onClear(); close() }}
-        >
-          Tozalash
-        </button>
-        <button
-          type="button"
-          className="col-filter__apply-btn"
-          onClick={() => { onApply(selected); close() }}
-        >
-          Qo'llash
-        </button>
-      </div>
-    </>
-  )
-}
 
 const CATEGORY_LABELS = {
   asosiy: 'Asosiy',
@@ -127,11 +43,6 @@ export default function StockBalancePanel({ departmentId }) {
   const [onlyLow, setOnlyLow] = useState(false)
   const [expandedIds, setExpandedIds] = useState(() => new Set())
   const [sortConfig, setSortConfig] = useState({ key: 'display_name', direction: 'asc' })
-  const [qtyFilter, setQtyFilter] = useState({ min: '', max: '' })
-  const [avgFilter, setAvgFilter] = useState({ min: '', max: '' })
-  const [statusFilter, setStatusFilter] = useState(
-    () => new Set(STATUS_OPTIONS.map((o) => o.key))
-  )
 
   function handleSort(key) {
     setSortConfig((prev) => {
@@ -271,17 +182,6 @@ export default function StockBalancePanel({ departmentId }) {
     const rowCategory = r.category && r.category.trim() ? r.category : '__none__'
     if (category !== '__all__' && rowCategory !== category) return false
     if (onlyLow && !r.is_low) return false
-
-    if (qtyFilter.min !== '' && (r.current_qty == null || Number(r.current_qty) < Number(qtyFilter.min))) return false
-    if (qtyFilter.max !== '' && (r.current_qty == null || Number(r.current_qty) > Number(qtyFilter.max))) return false
-
-    if (avgFilter.min !== '' && (r.avg_daily_out == null || Number(r.avg_daily_out) < Number(avgFilter.min))) return false
-    if (avgFilter.max !== '' && (r.avg_daily_out == null || Number(r.avg_daily_out) > Number(avgFilter.max))) return false
-
-    if (statusFilter.size < STATUS_OPTIONS.length) {
-      const key = r.status_rank === 0 ? 'low' : r.status_rank === 1 ? 'ok' : 'unknown'
-      if (!statusFilter.has(key)) return false
-    }
     return true
   })
 
@@ -385,49 +285,16 @@ export default function StockBalancePanel({ departmentId }) {
                   <span className="dtable-sortable" onClick={() => handleSort('current_qty')}>
                     Qoldiq{sortIndicator('current_qty')}
                   </span>
-                  <ColumnFilterIcon
-                    active={qtyFilter.min !== '' || qtyFilter.max !== ''}
-                    panel={({ close }) => (
-                      <RangeFilterPanel
-                        value={qtyFilter}
-                        onApply={setQtyFilter}
-                        onClear={() => setQtyFilter({ min: '', max: '' })}
-                        close={close}
-                      />
-                    )}
-                  />
                 </th>
                 <th className="dtable-right">
                   <span className="dtable-sortable" onClick={() => handleSort('avg_daily_out')}>
                     Kunlik sarf{sortIndicator('avg_daily_out')}
                   </span>
-                  <ColumnFilterIcon
-                    active={avgFilter.min !== '' || avgFilter.max !== ''}
-                    panel={({ close }) => (
-                      <RangeFilterPanel
-                        value={avgFilter}
-                        onApply={setAvgFilter}
-                        onClear={() => setAvgFilter({ min: '', max: '' })}
-                        close={close}
-                      />
-                    )}
-                  />
                 </th>
                 <th className="dtable-group-divider">
                   <span className="dtable-sortable" onClick={() => handleSort('status_rank')}>
                     Holat{sortIndicator('status_rank')}
                   </span>
-                  <ColumnFilterIcon
-                    active={statusFilter.size < STATUS_OPTIONS.length}
-                    panel={({ close }) => (
-                      <StatusFilterPanel
-                        value={statusFilter}
-                        onApply={setStatusFilter}
-                        onClear={() => setStatusFilter(new Set(STATUS_OPTIONS.map((o) => o.key)))}
-                        close={close}
-                      />
-                    )}
-                  />
                 </th>
               </tr>
             </thead>
