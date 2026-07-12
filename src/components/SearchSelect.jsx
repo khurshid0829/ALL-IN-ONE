@@ -57,7 +57,7 @@ export default function SearchSelect({
       if (entityType === 'sku_master') {
         req = supabase
           .from('sku_master')
-          .select('id, sku_code, display_name, unit, department_id, type')
+          .select('id, sku_code, display_name, unit, department_id, tur')
           .eq('is_archived', false)
           .or(`display_name.ilike.%${text}%,sku_code.ilike.%${text}%`)
           .limit(MAX_RESULTS);
