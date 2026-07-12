@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { formatQty } from '../lib/formatNumbers'
+import '../styles/dataTable.css'
 
 const CATEGORY_LABELS = {
   asosiy: 'Asosiy',
@@ -208,32 +209,32 @@ export default function StockBalancePanel({ departmentId }) {
       )}
 
       {!loading && filtered.length > 0 && (
-        <div style={styles.tableWrap}>
-          <table style={styles.table}>
+        <div className="dtable-wrap" style={{ maxHeight: 360, overflowY: 'auto' }}>
+          <table className="dtable">
             <thead>
               <tr>
-                <th style={styles.th}>SKU</th>
-                <th style={styles.th}>Nomi</th>
-                <th style={styles.thRight}>Oy boshi</th>
-                <th style={styles.thRight}>Bu oy kirim</th>
-                <th style={styles.thRight}>Bu oy chiqim</th>
-                <th style={styles.thRight}>Joriy qoldiq</th>
-                <th style={styles.thRight}>Minimal</th>
-                <th style={styles.th}>Holat</th>
+                <th>SKU</th>
+                <th>Nomi</th>
+                <th className="dtable-right">Oy boshi</th>
+                <th className="dtable-right">Bu oy kirim</th>
+                <th className="dtable-right">Bu oy chiqim</th>
+                <th className="dtable-right dtable-group-divider">Joriy qoldiq</th>
+                <th className="dtable-right">Minimal</th>
+                <th className="dtable-group-divider">Holat</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((row) => (
                 <tr key={row.id}>
-                  <td style={styles.td}>{row.sku_code}</td>
-                  <td style={styles.td}>{row.display_name}</td>
-                  <td style={styles.tdRight} className="mono-figure">
+                  <td>{row.sku_code}</td>
+                  <td>{row.display_name}</td>
+                  <td className="dtable-right mono-figure">
                     {formatQty(row.opening_qty)}
                   </td>
-                  <td style={styles.tdRight} className="mono-figure">
+                  <td className="dtable-right mono-figure">
                     {formatQty(row.total_in)}
                   </td>
-                  <td style={styles.tdRight} className="mono-figure">
+                  <td className="dtable-right mono-figure">
                     {formatQty(row.total_out)}
                     {row.avg_daily_out != null && (
                       <div style={styles.avgNote}>
@@ -241,14 +242,14 @@ export default function StockBalancePanel({ departmentId }) {
                       </div>
                     )}
                   </td>
-                  <td style={styles.tdRight} className="mono-figure">
+                  <td className="dtable-right dtable-group-divider dtable-emphasis mono-figure">
                     {formatQty(row.current_qty)}
                     {row.current_qty != null && row.unit ? ` ${row.unit}` : ''}
                   </td>
-                  <td style={styles.tdRight} className="mono-figure">
+                  <td className="dtable-right mono-figure">
                     {formatQty(row.min_stock_level)}
                   </td>
-                  <td style={styles.td}>
+                  <td className="dtable-group-divider">
                     {row.min_stock_level == null || row.current_qty == null ? (
                       <span style={styles.badgeUnknown}>Noma'lum</span>
                     ) : row.is_low ? (
