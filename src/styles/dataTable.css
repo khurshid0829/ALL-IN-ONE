@@ -79,3 +79,23 @@
 .dtable-wrap {
   overflow-x: auto;
 }
+
+.dtable-detail-row td {
+  background: #f4ecd9 !important;
+  padding: 10px 16px;
+  border-bottom: 1px solid #ece0c4;
+}
+
+.dtable-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  font-size: 12px;
+  color: var(--canvas-text-muted);
+}
+
+.dtable-detail strong {
+  color: var(--canvas-text);
+  font-weight: 600;
+  margin-right: 3px;
+}
