@@ -29,7 +29,7 @@ export function useAppSession() {
 
       const { data, error: profileError } = await supabase
         .from('app_users')
-        .select('role, department_id, departments(name)')
+        .select('id, role, department_id, departments(name)')
         .eq('auth_user_id', currentSession.user.id)
         .single()
 
@@ -40,6 +40,7 @@ export function useAppSession() {
         setProfile(null)
       } else {
         setProfile({
+          appUserId: data.id,
           role: data.role,
           departmentId: data.department_id,
           departmentName: data.departments?.name ?? null,
