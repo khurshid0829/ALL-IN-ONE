@@ -1,0 +1,81 @@
+/**
+ * dataTable.css — butun tizim uchun umumiy jadval ko'rinishi.
+ *
+ * Dizayn tamoyili (Apple uslubi): og'ir chiziqlar/grid emas, balki:
+ * - Juda nozik, past kontrastli qator ajratuvchilar (vertikal chiziqlar yo'q)
+ * - Zebra: juft qatorlar biroz boshqacha fonda — vertikal chiziqsiz ham
+ *   ustunlarni ko'z bilan kuzatish oson bo'ladi
+ * - Sichqoncha ustiga kelganda qator yengil yoritiladi (interaktivlik belgisi)
+ * - Muhim ustun (masalan "Joriy qoldiq") nozik rang bilan urg'ulanadi,
+ *   chiziq bilan emas
+ * - Guruh ajratish kerak bo'lganda — juda och, deyarli sezilmas chiziq
+ */
+
+.dtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.dtable thead th {
+  text-align: left;
+  padding: 10px 12px;
+  color: var(--canvas-text-muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #e6dcc7;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: var(--canvas);
+}
+
+.dtable thead th.dtable-right {
+  text-align: right;
+}
+
+.dtable thead th.dtable-group-divider {
+  border-left: 1px solid #ece4d4;
+}
+
+.dtable tbody td {
+  padding: 10px 12px;
+  color: var(--canvas-text);
+  border-bottom: 1px solid #f4eedf;
+  white-space: nowrap;
+}
+
+.dtable tbody td.dtable-right {
+  text-align: right;
+}
+
+.dtable tbody td.dtable-group-divider {
+  border-left: 1px solid #ece4d4;
+}
+
+.dtable tbody tr:nth-child(even) td {
+  background: #faf6ee;
+}
+
+.dtable tbody tr:hover td {
+  background: #f1e8d5;
+}
+
+.dtable td.dtable-emphasis {
+  background: rgba(184, 117, 74, 0.07);
+  font-weight: 600;
+}
+
+.dtable tbody tr:nth-child(even) td.dtable-emphasis {
+  background: rgba(184, 117, 74, 0.1);
+}
+
+.dtable tbody tr:hover td.dtable-emphasis {
+  background: rgba(184, 117, 74, 0.14);
+}
+
+.dtable-wrap {
+  overflow-x: auto;
+}
