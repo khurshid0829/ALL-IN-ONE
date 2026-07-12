@@ -88,7 +88,7 @@ export default function App() {
       <WarehouseEntryScreen
         departmentId={profile?.departmentId}
         departmentName={profile?.departmentName}
-        userId={session.user.id}
+        userId={profile?.appUserId}
         onSignOut={handleSignOut}
       />
     )
