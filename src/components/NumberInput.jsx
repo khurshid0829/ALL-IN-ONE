@@ -42,7 +42,12 @@ function toDisplayFromRaw(raw) {
 }
 
 function countMeaningful(str) {
-  return (str.match(/[0-9,]/g) || []).length
+  // Diqqat: bu yerda '.' ham hisobga olinadi (vergul emas hali) — chunki
+  // foydalanuvchi hozirgina '.' (masalan numpad nuqtasi) yozgan bo'lishi
+  // mumkin, va u pastda ',' ga aylantiriladi. Agar '.' shu yerda
+  // hisoblanmasa, kursor bitta belgi orqada qolib, keyingi raqam
+  // vergulning oldiga tushib ketadi.
+  return (str.match(/[0-9,.]/g) || []).length
 }
 
 function positionAfterMeaningful(str, n) {
