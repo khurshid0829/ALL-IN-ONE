@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { formatQty } from '../lib/formatNumbers'
 
 const CATEGORY_LABELS = {
   asosiy: 'Asosiy',
@@ -164,11 +165,11 @@ export default function StockBalancePanel({ departmentId }) {
                   <td style={styles.td}>{row.sku_code}</td>
                   <td style={styles.td}>{row.display_name}</td>
                   <td style={styles.tdRight} className="mono-figure">
-                    {row.current_qty != null ? row.current_qty : '\u2014'}
-                    {row.unit ? ` ${row.unit}` : ''}
+                    {formatQty(row.current_qty)}
+                    {row.current_qty != null && row.unit ? ` ${row.unit}` : ''}
                   </td>
                   <td style={styles.tdRight} className="mono-figure">
-                    {row.min_stock_level != null ? row.min_stock_level : '\u2014'}
+                    {formatQty(row.min_stock_level)}
                   </td>
                   <td style={styles.td}>
                     {row.min_stock_level == null || row.current_qty == null ? (
