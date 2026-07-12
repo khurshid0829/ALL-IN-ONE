@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Fragment } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { formatQty } from '../lib/formatNumbers'
 import '../styles/dataTable.css'
@@ -41,6 +41,16 @@ export default function StockBalancePanel({ departmentId }) {
   const [errorMsg, setErrorMsg] = useState(null)
   const [category, setCategory] = useState('__all__')
   const [onlyLow, setOnlyLow] = useState(false)
+  const [expandedIds, setExpandedIds] = useState(() => new Set())
+
+  function toggleExpand(id) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -209,70 +219,91 @@ export default function StockBalancePanel({ departmentId }) {
       )}
 
       {!loading && filtered.length > 0 && (
-        <div className="dtable-wrap" style={{ maxHeight: 360, overflowY: 'auto' }}>
+        <div className="dtable-wrap" style={{ maxHeight: 420, overflowY: 'auto' }}>
           <table className="dtable">
             <thead>
               <tr>
+                <th style={{ width: 26 }}></th>
                 <th>SKU</th>
                 <th>Nomi</th>
-                <th className="dtable-right">Oy boshi</th>
-                <th className="dtable-right">Bu oy kirim</th>
-                <th className="dtable-right">Bu oy chiqim</th>
-                <th className="dtable-right dtable-group-divider">Joriy qoldiq</th>
+                <th className="dtable-right dtable-group-divider dtable-emphasis">
+                  Joriy qoldiq
+                </th>
                 <th className="dtable-right">Minimal</th>
                 <th className="dtable-group-divider">Holat</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((row) => (
-                <tr key={row.id}>
-                  <td>{row.sku_code}</td>
-                  <td>{row.display_name}</td>
-                  <td className="dtable-right mono-figure">
-                    {formatQty(row.opening_qty)}
-                  </td>
-                  <td className="dtable-right mono-figure">
-                    {formatQty(row.total_in)}
-                  </td>
-                  <td className="dtable-right mono-figure">
-                    {formatQty(row.total_out)}
-                    {row.avg_daily_out != null && (
-                      <div style={styles.avgNote}>
-                        o'rtacha: {formatQty(row.avg_daily_out)}/kun
-                      </div>
+              {filtered.map((row) => {
+                const isExpanded = expandedIds.has(row.id)
+                return (
+                  <Fragment key={row.id}>
+                    <tr
+                      onClick={() => toggleExpand(row.id)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <td style={{ textAlign: 'center', color: 'var(--canvas-text-muted)' }}>
+                        {isExpanded ? '\u25BE' : '\u25B8'}
+                      </td>
+                      <td>{row.sku_code}</td>
+                      <td>{row.display_name}</td>
+                      <td className="dtable-right dtable-group-divider dtable-emphasis mono-figure">
+                        {formatQty(row.current_qty)}
+                        {row.current_qty != null && row.unit ? ` ${row.unit}` : ''}
+                      </td>
+                      <td className="dtable-right mono-figure">
+                        {formatQty(row.min_stock_level)}
+                      </td>
+                      <td className="dtable-group-divider">
+                        {row.min_stock_level == null || row.current_qty == null ? (
+                          <span style={styles.badgeUnknown}>Noma'lum</span>
+                        ) : row.is_low ? (
+                          <span style={styles.badgeLow}>Kam qoldi</span>
+                        ) : (
+                          <span style={styles.badgeOk}>Yetarli</span>
+                        )}
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="dtable-detail-row">
+                        <td colSpan={6}>
+                          <div className="dtable-detail">
+                            <span>
+                              <strong>Oy boshi:</strong> {formatQty(row.opening_qty)}
+                            </span>
+                            <span>
+                              <strong>Bu oy kirim:</strong> {formatQty(row.total_in)}
+                            </span>
+                            <span>
+                              <strong>Bu oy chiqim:</strong> {formatQty(row.total_out)}
+                            </span>
+                            {row.avg_daily_out != null && (
+                              <span>
+                                <strong>O'rtacha kunlik sarf:</strong>{' '}
+                                {formatQty(row.avg_daily_out)}/kun
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                  <td className="dtable-right dtable-group-divider dtable-emphasis mono-figure">
-                    {formatQty(row.current_qty)}
-                    {row.current_qty != null && row.unit ? ` ${row.unit}` : ''}
-                  </td>
-                  <td className="dtable-right mono-figure">
-                    {formatQty(row.min_stock_level)}
-                  </td>
-                  <td className="dtable-group-divider">
-                    {row.min_stock_level == null || row.current_qty == null ? (
-                      <span style={styles.badgeUnknown}>Noma'lum</span>
-                    ) : row.is_low ? (
-                      <span style={styles.badgeLow}>Kam qoldi</span>
-                    ) : (
-                      <span style={styles.badgeOk}>Yetarli</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                  </Fragment>
+                )
+              })}
             </tbody>
           </table>
         </div>
       )}
 
+      <p style={styles.footnoteSmall}>
+        Tafsilotlar (oy boshi, kirim, chiqim) uchun qatorni bosing.
+      </p>
+
       <p style={styles.footnote}>
-        Eslatma: "Oy boshi" &mdash; shu oy uchun kiritilgan ochilish qoldig'i
-        (warehouse_opening). "Minimal" ustuni hozircha bo'sh &mdash; uni
-        Bigmanager har bir mahsulot uchun to'ldirgach, "Kam qoldi"
-        ogohlantirishi ishlay boshlaydi. Agar biror mahsulot uchun bu oy
-        uchun ochilish qoldig'i kiritilmagan bo'lsa, "Oy boshi" va "Joriy
-        qoldiq" ustunlari "&mdash;" bo'lib ko'rinadi. "O'rtacha: .../kun"
-        faqat xomashyo (XOM) turidagi mahsulotlarda ko'rinadi.
+        Eslatma: "Minimal" ustuni hozircha bo'sh &mdash; uni Bigmanager har bir
+        mahsulot uchun to'ldirgach, "Kam qoldi" ogohlantirishi ishlay boshlaydi.
+        Agar biror mahsulot uchun bu oy uchun ochilish qoldig'i kiritilmagan
+        bo'lsa, "Joriy qoldiq" "&mdash;" bo'lib ko'rinadi.
       </p>
     </div>
   )
@@ -404,6 +435,12 @@ const styles = {
     fontSize: 12,
     color: 'var(--canvas-text-muted)',
     lineHeight: 1.5,
+  },
+  footnoteSmall: {
+    marginTop: 8,
+    fontSize: 11,
+    color: 'var(--canvas-text-muted)',
+    fontStyle: 'italic',
   },
   avgNote: {
     fontSize: 11,
