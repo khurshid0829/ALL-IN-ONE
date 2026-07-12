@@ -5,6 +5,7 @@ import StockBalancePanel from '../components/StockBalancePanel'
 import NumberInput from '../components/NumberInput'
 import CustomDatePicker from '../components/CustomDatePicker'
 import { formatQty } from '../lib/formatNumbers'
+import '../styles/dataTable.css'
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -251,33 +252,33 @@ export default function WarehouseEntryScreen({
           )}
 
           {!loadingRecent && recentEntries.length > 0 && (
-            <div style={styles.tableWrap}>
-              <table style={styles.table}>
+            <div className="dtable-wrap">
+              <table className="dtable">
                 <thead>
                   <tr>
-                    <th style={styles.th}>Sana</th>
-                    <th style={styles.th}>SKU</th>
-                    <th style={styles.thRight}>Kirim</th>
-                    <th style={styles.thRight}>Chiqim</th>
-                    <th style={styles.th}>Izoh</th>
+                    <th>Sana</th>
+                    <th>SKU</th>
+                    <th className="dtable-right dtable-group-divider">Kirim</th>
+                    <th className="dtable-right">Chiqim</th>
+                    <th className="dtable-group-divider">Izoh</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentEntries.map((row) => (
                     <tr key={row.id}>
-                      <td style={styles.td}>{row.entry_date}</td>
-                      <td style={styles.td}>
+                      <td>{row.entry_date}</td>
+                      <td>
                         {row.sku_master
                           ? `${row.sku_master.sku_code} \u2014 ${row.sku_master.display_name}`
                           : '\u2014'}
                       </td>
-                      <td style={styles.tdRight} className="mono-figure">
+                      <td className="dtable-right dtable-group-divider mono-figure">
                         {formatQty(row.qty_in ?? 0)}
                       </td>
-                      <td style={styles.tdRight} className="mono-figure">
+                      <td className="dtable-right mono-figure">
                         {formatQty(row.qty_out ?? 0)}
                       </td>
-                      <td style={styles.td}>{row.note ?? '\u2014'}</td>
+                      <td className="dtable-group-divider">{row.note ?? '\u2014'}</td>
                     </tr>
                   ))}
                 </tbody>
