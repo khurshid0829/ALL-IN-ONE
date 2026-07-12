@@ -1,205 +1,140 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import './SearchSelect.css';
+.search-select {
+  position: relative;
+  width: 100%;
+  font-family: var(--font-body);
+}
 
-/**
- * SearchSelect — umumiy "qidiruv bilan tanlash" komponenti.
- *
- * Ishlatilishi:
- *   sku_master uchun:
- *     <SearchSelect
- *        entityType="sku_master"
- *        departmentId={departmentId}
- *        skuType="MAX"                // ixtiyoriy: "XOM" yoki "MAX" bilan filtr
- *        placeholder="Mahsulot qidirish..."
- *        onSelect={(item) => setSelectedSku(item)}
- *     />
- *
- *   customers uchun:
- *     <SearchSelect
- *        entityType="customers"
- *        placeholder="Mijoz qidirish..."
- *        onSelect={(item) => setSelectedCustomer(item)}
- *     />
- *
- * onSelect callback tanlangan qatorni (butun obyekt: id, nomi va h.k.) qaytaradi.
- */
+.search-select__input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
 
-const MIN_CHARS = 3;
-const DEBOUNCE_MS = 350;
-const MAX_RESULTS = 20;
+.search-select__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 36px 10px 12px;
+  background: var(--shell-navy-deep);
+  border: 1px solid var(--shell-line);
+  border-radius: var(--radius-control);
+  color: var(--on-navy);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
 
-export default function SearchSelect({
-  entityType,          // 'sku_master' | 'customers'
-  departmentId,        // sku_master uchun majburiy, customers uchun kerak emas
-  skuType,             // ixtiyoriy: 'XOM' | 'MAX' (faqat sku_master uchun)
-  placeholder = 'Qidirish...',
-  initialLabel = '',   // tahrirlashda oldindan tanlangan nomni ko'rsatish uchun
-  onSelect,
-  disabled = false,
-}) {
-  const [query, setQuery] = useState(initialLabel);
-  const [results, setResults] = useState([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selected, setSelected] = useState(null);
-  const [error, setError] = useState(null);
+.search-select__input:focus {
+  border-color: var(--teal);
+}
 
-  const debounceRef = useRef(null);
-  const containerRef = useRef(null);
+.search-select__input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
-  const runSearch = useCallback(async (text) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      let req;
+.search-select__input::placeholder {
+  color: var(--on-navy-muted);
+}
 
-      if (entityType === 'sku_master') {
-        req = supabase
-          .from('sku_master')
-          .select('id, sku_code, display_name, unit, department_id, tur')
-          .eq('is_archived', false)
-          .or(`display_name.ilike.%${text}%,sku_code.ilike.%${text}%`)
-          .limit(MAX_RESULTS);
+.search-select__clear {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--on-navy-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
 
-        if (departmentId) {
-          req = req.eq('department_id', departmentId);
-        }
-        if (skuType) {
-          // 'tur' ustuni: qiymati 'XOM' (xomashyo) yoki 'MAX' (mahsulot)
-          req = req.eq('tur', skuType);
-        }
-      } else if (entityType === 'customers') {
-        req = supabase
-          .from('customers')
-          .select('id, full_name, phone')
-          .eq('is_archived', false)
-          .ilike('full_name', `%${text}%`)
-          .limit(MAX_RESULTS);
-      } else {
-        throw new Error(`Noma'lum entityType: ${entityType}`);
-      }
+.search-select__clear:hover {
+  color: var(--on-navy);
+}
 
-      const { data, error: reqError } = await req;
-      if (reqError) throw reqError;
+.search-select__spinner {
+  position: absolute;
+  right: 12px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--shell-line);
+  border-top-color: var(--copper);
+  border-radius: 50%;
+  animation: search-select-spin 0.6s linear infinite;
+}
 
-      setResults(data || []);
-      setIsOpen(true);
-    } catch (err) {
-      console.error('SearchSelect qidiruv xatosi:', err);
-      setError(
-        "Qidirishda xatolik: " + (err?.message || "noma'lum xato")
-      );
-      setResults([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [entityType, departmentId, skuType]);
+@keyframes search-select-spin {
+  to { transform: rotate(360deg); }
+}
 
-  const handleChange = (e) => {
-    const text = e.target.value;
-    setQuery(text);
-    setSelected(null);
+.search-select__list {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--shell-navy);
+  border: 1px solid var(--shell-line);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-panel);
+}
 
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+.search-select__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--on-navy);
+}
 
-    if (text.trim().length < MIN_CHARS) {
-      setResults([]);
-      setIsOpen(false);
-      return;
-    }
+.search-select__item:hover {
+  background: var(--shell-line);
+}
 
-    debounceRef.current = setTimeout(() => {
-      runSearch(text.trim());
-    }, DEBOUNCE_MS);
-  };
+.search-select__code {
+  font-family: var(--font-mono);
+  color: var(--copper);
+  font-size: 12px;
+  white-space: nowrap;
+}
 
-  const handlePick = (item) => {
-    const label = entityType === 'sku_master'
-      ? `${item.sku_code} — ${item.display_name}`
-      : item.full_name;
+.search-select__name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-    setSelected(item);
-    setQuery(label);
-    setIsOpen(false);
-    setResults([]);
-    if (onSelect) onSelect(item);
-  };
+.search-select__unit {
+  color: var(--on-navy-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
 
-  const handleClear = () => {
-    setSelected(null);
-    setQuery('');
-    setResults([]);
-    setIsOpen(false);
-    if (onSelect) onSelect(null);
-  };
+.search-select__empty {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  padding: 10px 12px;
+  background: var(--shell-navy);
+  border: 1px solid var(--shell-line);
+  border-radius: var(--radius-control);
+  color: var(--on-navy-muted);
+  font-size: 13px;
+  z-index: 30;
+}
 
-  // Tashqariga bosilganda ro'yxatni yopish
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  return (
-    <div className="search-select" ref={containerRef}>
-      <div className="search-select__input-wrap">
-        <input
-          type="text"
-          className="search-select__input"
-          value={query}
-          placeholder={placeholder}
-          onChange={handleChange}
-          onFocus={() => { if (results.length > 0) setIsOpen(true); }}
-          disabled={disabled}
-        />
-        {isLoading && <span className="search-select__spinner" />}
-        {!isLoading && query && (
-          <button
-            type="button"
-            className="search-select__clear"
-            onClick={handleClear}
-            aria-label="Tozalash"
-          >
-            ×
-          </button>
-        )}
-      </div>
-
-      {error && <div className="search-select__error">{error}</div>}
-
-      {isOpen && results.length > 0 && (
-        <ul className="search-select__list">
-          {results.map((item) => (
-            <li
-              key={item.id}
-              className="search-select__item"
-              onClick={() => handlePick(item)}
-            >
-              {entityType === 'sku_master' ? (
-                <>
-                  <span className="search-select__code">{item.sku_code}</span>
-                  <span className="search-select__name">{item.display_name}</span>
-                  {item.unit && <span className="search-select__unit">{item.unit}</span>}
-                </>
-              ) : (
-                <>
-                  <span className="search-select__name">{item.full_name}</span>
-                  {item.phone && <span className="search-select__unit">{item.phone}</span>}
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {isOpen && !isLoading && results.length === 0 && query.trim().length >= MIN_CHARS && (
-        <div className="search-select__empty">Hech narsa topilmadi</div>
-      )}
-    </div>
-  );
+.search-select__error {
+  margin-top: 4px;
+  color: var(--danger);
+  font-size: 12px;
 }
