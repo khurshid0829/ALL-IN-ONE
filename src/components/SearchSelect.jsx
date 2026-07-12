@@ -87,7 +87,9 @@ export default function SearchSelect({
       setIsOpen(true);
     } catch (err) {
       console.error('SearchSelect qidiruv xatosi:', err);
-      setError("Qidirishda xatolik yuz berdi. Qayta urinib ko'ring.");
+      setError(
+        "Qidirishda xatolik: " + (err?.message || "noma'lum xato")
+      );
       setResults([]);
     } finally {
       setIsLoading(false);
