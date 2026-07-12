@@ -11,14 +11,31 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10)
 }
 
+function makeEmptyLine() {
+  return {
+    key: Math.random().toString(36).slice(2) + Date.now().toString(36),
+    selectedSku: null,
+    qtyIn: '',
+    qtyOut: '',
+    expectedQtyOut: '',
+    note: '',
+  }
+}
+
 /**
- * Omborchi ekrani — kunlik xomashyo/mahsulot kirim va chiqimini
- * warehouse_entries jadvaliga qo'lda kiritish uchun.
+ * Omborchi ekrani — kunlik xomashyo kirim va chiqimini warehouse_entries
+ * jadvaliga qo'lda kiritish uchun.
  *
- * MUHIM: qty_out (chiqim) hech qachon avtomatik hisoblanmaydi —
- * bu ARCHITECTURE.md/DECISIONS.md'dagi qattiq qarorga mos
- * (elektr/uskuna uzilishlari sababli avtomatik ayirish rad etilgan).
- * expected_qty_out — ixtiyoriy, faqat taqqoslash uchun, majburiy emas.
+ * MUHIM: bir "operatsiya"da bir nechta xomashyo qatorini birga kiritish
+ * mumkin (Sale manager'ning "bir chek — ko'p mahsulot" mantig'iga o'xshab).
+ * Farqi: bu yerda umumiy "chek" jadvali (header) kerak emas — har bir
+ * qator warehouse_entries'ga alohida, lekin bir xil sana bilan, bitta
+ * "Saqlash" bosilganda birga yoziladi. Baza sxemasi o'zgarmadi.
+ *
+ * qty_out (chiqim) hech qachon avtomatik hisoblanmaydi — bu
+ * ARCHITECTURE.md/DECISIONS.md'dagi qattiq qarorga mos (elektr/uskuna
+ * uzilishlari sababli avtomatik ayirish rad etilgan). expected_qty_out —
+ * ixtiyoriy, faqat taqqoslash uchun, majburiy emas.
  */
 export default function WarehouseEntryScreen({
   departmentId,
@@ -26,12 +43,8 @@ export default function WarehouseEntryScreen({
   userId,
   onSignOut,
 }) {
-  const [selectedSku, setSelectedSku] = useState(null)
   const [entryDate, setEntryDate] = useState(todayIso())
-  const [qtyIn, setQtyIn] = useState('')
-  const [qtyOut, setQtyOut] = useState('')
-  const [expectedQtyOut, setExpectedQtyOut] = useState('')
-  const [note, setNote] = useState('')
+  const [lines, setLines] = useState(() => [makeEmptyLine()])
 
   const [submitting, setSubmitting] = useState(false)
   const [errorMsg, setErrorMsg] = useState(null)
@@ -69,14 +82,22 @@ export default function WarehouseEntryScreen({
     loadRecent()
   }, [loadRecent])
 
+  function updateLine(key, patch) {
+    setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)))
+  }
+
+  function addLine() {
+    setLines((prev) => [...prev, makeEmptyLine()])
+  }
+
+  function removeLine(key) {
+    setLines((prev) => (prev.length > 1 ? prev.filter((l) => l.key !== key) : prev))
+  }
+
   function resetFormAfterSubmit() {
-    setSelectedSku(null)
-    setQtyIn('')
-    setQtyOut('')
-    setExpectedQtyOut('')
-    setNote('')
+    setLines([makeEmptyLine()])
     // entryDate ataylab tozalanmaydi — bir kunda ketma-ket bir necha
-    // yozuv kiritish odatiy holat, sana o'zgarmasdan qolgani qulay.
+    // operatsiya kiritish odatiy holat, sana o'zgarmasdan qolgani qulay.
   }
 
   async function handleSubmit(e) {
@@ -84,42 +105,57 @@ export default function WarehouseEntryScreen({
     setErrorMsg(null)
     setSuccessMsg(null)
 
-    if (!selectedSku) {
-      setErrorMsg("Iltimos, mahsulot yoki xomashyoni tanlang.")
-      return
+    // Har bir qatorni tekshirish
+    const rowsToInsert = []
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      const lineNo = i + 1
+
+      if (!line.selectedSku) {
+        setErrorMsg(`${lineNo}-qatorda mahsulot tanlanmagan.`)
+        return
+      }
+
+      const qtyInNum = line.qtyIn.trim() === '' ? 0 : Number(line.qtyIn)
+      const qtyOutNum = line.qtyOut.trim() === '' ? 0 : Number(line.qtyOut)
+
+      if (Number.isNaN(qtyInNum) || Number.isNaN(qtyOutNum)) {
+        setErrorMsg(`${lineNo}-qatorda miqdor faqat son bo'lishi kerak.`)
+        return
+      }
+      if (qtyInNum === 0 && qtyOutNum === 0) {
+        setErrorMsg(`${lineNo}-qatorda kirim yoki chiqimdan kamida bittasini kiriting.`)
+        return
+      }
+      if (qtyInNum < 0 || qtyOutNum < 0) {
+        setErrorMsg(`${lineNo}-qatorda miqdor manfiy bo'lishi mumkin emas.`)
+        return
+      }
+
+      rowsToInsert.push({
+        department_id: departmentId,
+        sku_id: line.selectedSku.id,
+        entry_date: entryDate,
+        qty_in: qtyInNum,
+        qty_out: qtyOutNum,
+        expected_qty_out:
+          line.expectedQtyOut.trim() === '' ? null : Number(line.expectedQtyOut),
+        note: line.note.trim() === '' ? null : line.note.trim(),
+        created_by: userId,
+      })
     }
 
-    const qtyInNum = qtyIn.trim() === '' ? 0 : Number(qtyIn)
-    const qtyOutNum = qtyOut.trim() === '' ? 0 : Number(qtyOut)
-
-    if (Number.isNaN(qtyInNum) || Number.isNaN(qtyOutNum)) {
-      setErrorMsg("Miqdor faqat son bo'lishi kerak.")
-      return
-    }
-
-    if (qtyInNum === 0 && qtyOutNum === 0) {
-      setErrorMsg("Kirim yoki chiqimdan kamida bittasini kiriting.")
-      return
-    }
-
-    if (qtyInNum < 0 || qtyOutNum < 0) {
-      setErrorMsg("Miqdor manfiy bo'lishi mumkin emas.")
+    // Bir xil mahsulot bir necha marta qo'shilib qolmaganini tekshirish
+    const skuIds = rowsToInsert.map((r) => r.sku_id)
+    const hasDuplicate = new Set(skuIds).size !== skuIds.length
+    if (hasDuplicate) {
+      setErrorMsg("Bir xil mahsulot ro'yxatda bir necha marta takrorlangan — har bir qatorda boshqa mahsulot tanlang.")
       return
     }
 
     setSubmitting(true)
 
-    const { error } = await supabase.from('warehouse_entries').insert({
-      department_id: departmentId,
-      sku_id: selectedSku.id,
-      entry_date: entryDate,
-      qty_in: qtyInNum,
-      qty_out: qtyOutNum,
-      expected_qty_out:
-        expectedQtyOut.trim() === '' ? null : Number(expectedQtyOut),
-      note: note.trim() === '' ? null : note.trim(),
-      created_by: userId,
-    })
+    const { error } = await supabase.from('warehouse_entries').insert(rowsToInsert)
 
     if (error) {
       setErrorMsg('Saqlashda xatolik: ' + error.message)
@@ -128,7 +164,9 @@ export default function WarehouseEntryScreen({
     }
 
     setSuccessMsg(
-      `Saqlandi: ${selectedSku.sku_code} — ${selectedSku.display_name}`
+      rowsToInsert.length === 1
+        ? 'Saqlandi: 1 ta mahsulot.'
+        : `Saqlandi: ${rowsToInsert.length} ta mahsulot.`
     )
     setSubmitting(false)
     resetFormAfterSubmit()
@@ -155,68 +193,87 @@ export default function WarehouseEntryScreen({
 
           <form onSubmit={handleSubmit} style={styles.form}>
             <div style={styles.field}>
-              <label style={styles.label}>Xomashyo</label>
-              <SearchSelect
-                entityType="sku_master"
-                departmentId={departmentId}
-                skuType="XOM"
-                placeholder="Kamida 3 harf yozing..."
-                initialLabel={
-                  selectedSku
-                    ? `${selectedSku.sku_code} — ${selectedSku.display_name}`
-                    : ''
-                }
-                onSelect={setSelectedSku}
-              />
+              <label style={styles.label}>Sana (barcha qatorlar uchun umumiy)</label>
+              <CustomDatePicker value={entryDate} onChange={setEntryDate} />
             </div>
 
-            <div style={styles.row}>
-              <div style={styles.field}>
-                <label style={styles.label}>Sana</label>
-                <CustomDatePicker value={entryDate} onChange={setEntryDate} />
-              </div>
-              <div style={styles.field}>
-                <label style={styles.label}>Kirim (qty_in)</label>
-                <NumberInput
-                  value={qtyIn}
-                  onChange={setQtyIn}
-                  style={styles.input}
-                  placeholder="0"
-                />
-              </div>
-              <div style={styles.field}>
-                <label style={styles.label}>Chiqim (qty_out)</label>
-                <NumberInput
-                  value={qtyOut}
-                  onChange={setQtyOut}
-                  style={styles.input}
-                  placeholder="0"
-                />
-              </div>
-            </div>
+            {lines.map((line, idx) => (
+              <div key={line.key} style={styles.lineCard}>
+                <div style={styles.lineHeader}>
+                  <span style={styles.lineNumber}>{idx + 1}-mahsulot</span>
+                  {lines.length > 1 && (
+                    <button
+                      type="button"
+                      style={styles.removeLineBtn}
+                      onClick={() => removeLine(line.key)}
+                    >
+                      Olib tashlash
+                    </button>
+                  )}
+                </div>
 
-            <div style={styles.field}>
-              <label style={styles.label}>
-                Me'yor bo'yicha kutilgan sarf (ixtiyoriy)
-              </label>
-              <NumberInput
-                value={expectedQtyOut}
-                onChange={setExpectedQtyOut}
-                style={styles.input}
-                placeholder="Retsept asosida taqqoslash uchun, majburiy emas"
-              />
-            </div>
+                <div style={styles.field}>
+                  <label style={styles.label}>Xomashyo</label>
+                  <SearchSelect
+                    entityType="sku_master"
+                    departmentId={departmentId}
+                    skuType="XOM"
+                    placeholder="Kamida 3 harf yozing..."
+                    initialLabel={
+                      line.selectedSku
+                        ? `${line.selectedSku.sku_code} — ${line.selectedSku.display_name}`
+                        : ''
+                    }
+                    onSelect={(sku) => updateLine(line.key, { selectedSku: sku })}
+                  />
+                </div>
 
-            <div style={styles.field}>
-              <label style={styles.label}>Izoh</label>
-              <input
-                type="text"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                style={styles.input}
-                placeholder="Ixtiyoriy izoh..."
-              />
-            </div>
+                <div style={styles.row}>
+                  <div style={styles.field}>
+                    <label style={styles.label}>Kirim (qty_in)</label>
+                    <NumberInput
+                      value={line.qtyIn}
+                      onChange={(v) => updateLine(line.key, { qtyIn: v })}
+                      style={styles.input}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label}>Chiqim (qty_out)</label>
+                    <NumberInput
+                      value={line.qtyOut}
+                      onChange={(v) => updateLine(line.key, { qtyOut: v })}
+                      style={styles.input}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div style={styles.field}>
+                    <label style={styles.label}>Kutilgan sarf (ixtiyoriy)</label>
+                    <NumberInput
+                      value={line.expectedQtyOut}
+                      onChange={(v) => updateLine(line.key, { expectedQtyOut: v })}
+                      style={styles.input}
+                      placeholder="\u2014"
+                    />
+                  </div>
+                </div>
+
+                <div style={styles.field}>
+                  <label style={styles.label}>Izoh</label>
+                  <input
+                    type="text"
+                    value={line.note}
+                    onChange={(e) => updateLine(line.key, { note: e.target.value })}
+                    style={styles.input}
+                    placeholder="Ixtiyoriy izoh..."
+                  />
+                </div>
+              </div>
+            ))}
+
+            <button type="button" style={styles.addLineBtn} onClick={addLine}>
+              + Yana mahsulot qo'shish
+            </button>
 
             {errorMsg && <div style={styles.errorBox}>{errorMsg}</div>}
             {successMsg && <div style={styles.successBox}>{successMsg}</div>}
@@ -226,7 +283,11 @@ export default function WarehouseEntryScreen({
               disabled={submitting}
               style={styles.submitBtn}
             >
-              {submitting ? 'Saqlanmoqda...' : 'Saqlash'}
+              {submitting
+                ? 'Saqlanmoqda...'
+                : lines.length > 1
+                ? `Barchasini saqlash (${lines.length} ta)`
+                : 'Saqlash'}
             </button>
           </form>
         </div>
@@ -330,23 +391,6 @@ const styles = {
     marginBottom: 16,
   },
   dateFilterRow: { display: 'flex', gap: 8, alignItems: 'center' },
-  dateFilterInput: {
-    padding: '7px 10px',
-    borderRadius: 'var(--radius-control)',
-    border: '1px solid var(--shell-line)',
-    background: '#fff',
-    color: 'var(--canvas-text)',
-    fontSize: 13,
-  },
-  refreshBtn: {
-    background: 'transparent',
-    border: '1px solid var(--canvas-text-muted)',
-    color: 'var(--canvas-text-muted)',
-    padding: '6px 10px',
-    borderRadius: 'var(--radius-control)',
-    cursor: 'pointer',
-    fontSize: 12,
-  },
   panel: {
     background: 'var(--canvas)',
     borderRadius: 'var(--radius-panel)',
@@ -359,6 +403,46 @@ const styles = {
     fontSize: 17,
   },
   form: { display: 'flex', flexDirection: 'column', gap: 16 },
+  lineCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    background: 'var(--canvas-raised)',
+    border: '1px solid #e6dcc7',
+    borderRadius: 10,
+    padding: '14px 16px',
+  },
+  lineHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  lineNumber: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: 'var(--copper)',
+    letterSpacing: '0.02em',
+  },
+  removeLineBtn: {
+    background: 'transparent',
+    border: '1px solid var(--danger)',
+    color: 'var(--danger)',
+    padding: '4px 10px',
+    borderRadius: 6,
+    cursor: 'pointer',
+    fontSize: 11,
+  },
+  addLineBtn: {
+    alignSelf: 'flex-start',
+    background: 'transparent',
+    border: '1px dashed var(--copper)',
+    color: 'var(--copper)',
+    padding: '9px 16px',
+    borderRadius: 'var(--radius-control)',
+    cursor: 'pointer',
+    fontSize: 13,
+    fontWeight: 600,
+  },
   row: { display: 'flex', gap: 16, flexWrap: 'wrap' },
   field: { display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 160 },
   label: { fontSize: 12, color: 'var(--canvas-text-muted)', letterSpacing: '0.02em' },
@@ -400,34 +484,4 @@ const styles = {
   },
   statusText: { color: 'var(--canvas-text-muted)' },
   emptyText: { color: 'var(--canvas-text-muted)', fontSize: 14 },
-  tableWrap: { overflowX: 'auto' },
-  table: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
-  th: {
-    textAlign: 'left',
-    padding: '8px 10px',
-    color: 'var(--canvas-text-muted)',
-    fontWeight: 500,
-    borderBottom: '1px solid #e6dcc7',
-    whiteSpace: 'nowrap',
-  },
-  thRight: {
-    textAlign: 'right',
-    padding: '8px 10px',
-    color: 'var(--canvas-text-muted)',
-    fontWeight: 500,
-    borderBottom: '1px solid #e6dcc7',
-    whiteSpace: 'nowrap',
-  },
-  td: {
-    padding: '10px',
-    color: 'var(--canvas-text)',
-    borderBottom: '1px solid #efe7d6',
-  },
-  tdRight: {
-    padding: '10px',
-    color: 'var(--canvas-text)',
-    borderBottom: '1px solid #efe7d6',
-    textAlign: 'right',
-    whiteSpace: 'nowrap',
-  },
 }
