@@ -80,6 +80,24 @@
   overflow-x: auto;
 }
 
+.dtable-truncate {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .dtable-truncate {
+    max-width: 100px;
+  }
+  .dtable thead th,
+  .dtable tbody td {
+    padding: 8px 6px;
+    font-size: 12px;
+  }
+}
+
 .dtable-detail-row td {
   background: #f4ecd9 !important;
   padding: 10px 16px;
