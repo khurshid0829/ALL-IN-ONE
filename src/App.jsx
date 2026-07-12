@@ -8,6 +8,7 @@ import RolePlaceholder from './pages/RolePlaceholder'
 import MfaSetup from './pages/MfaSetup'
 import MfaChallenge from './pages/MfaChallenge'
 import ArchiveManager from './pages/ArchiveManager'
+import WarehouseEntryScreen from './pages/WarehouseEntryScreen'
 
 const MFA_MANDATORY_ROLES = ['Founder', 'Bigmanager']
 
@@ -78,6 +79,17 @@ export default function App() {
       <FounderDashboard
         onSignOut={handleSignOut}
         onOpenArchive={() => setView('archive')}
+      />
+    )
+  }
+
+  if (profile?.role === 'Omborchi') {
+    return (
+      <WarehouseEntryScreen
+        departmentId={profile?.departmentId}
+        departmentName={profile?.departmentName}
+        userId={session.user.id}
+        onSignOut={handleSignOut}
       />
     )
   }
