@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { matchesSearchQuery } from '../lib/transliterate';
 import './SearchSelect.css';
 
 /**
@@ -24,15 +25,22 @@ import './SearchSelect.css';
  *
  * onSelect callback tanlangan qatorni (butun obyekt: id, nomi va h.k.) qaytaradi.
  *
+ * ISHLASH MANTIQI (2026-07-12'da yangilandi):
+ * Butun ro'yxat (bo'lim + tur bo'yicha) BIR MARTA yuklanadi va xotirada
+ * saqlanadi. Qidiruv esa internetga so'rov yubormasdan, shu yerning o'zida
+ * (brauzerda) bajariladi — bu ham tezroq, ham Kiril/Lotin muammosini hal
+ * qiladi: mahsulot nomi Kiril alifboda saqlangan bo'lsa-da ("Какос"),
+ * foydalanuvchi Lotin klaviaturada yozsa ("kakos"), moslik topiladi
+ * (matchesSearchQuery — transliteratsiya orqali solishtiradi).
+ *
  * "Ro'yxatdan tanlash" tugmasi — nomni eslay olmagan foydalanuvchi uchun,
  * to'liq ro'yxatni (sku_master uchun kategoriya bo'yicha guruhlangan holda)
  * ochib, yozmasdan tanlash imkonini beradi.
  */
 
 const MIN_CHARS = 3;
-const DEBOUNCE_MS = 350;
-const MAX_RESULTS = 20;
-const BROWSE_LIMIT = 1000;
+const MAX_RESULTS = 30;
+const FETCH_LIMIT = 2000;
 
 const CATEGORY_LABELS = {
   asosiy: 'Asosiy',
@@ -52,109 +60,19 @@ export default function SearchSelect({
   enableBrowse = true, // "Ro'yxatdan tanlash" tugmasini ko'rsatish/yashirish
 }) {
   const [query, setQuery] = useState(initialLabel);
-  const [results, setResults] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-
   const [browseOpen, setBrowseOpen] = useState(false);
-  const [browseLoading, setBrowseLoading] = useState(false);
-  const [browseError, setBrowseError] = useState(null);
-  const [browseRows, setBrowseRows] = useState([]);
   const [browseCategory, setBrowseCategory] = useState('__all__');
 
-  const debounceRef = useRef(null);
+  const [allItems, setAllItems] = useState([]);
+  const [itemsLoading, setItemsLoading] = useState(true);
+  const [itemsError, setItemsError] = useState(null);
+
   const containerRef = useRef(null);
 
-  const runSearch = useCallback(async (text) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      let req;
-
-      if (entityType === 'sku_master') {
-        req = supabase
-          .from('sku_master')
-          .select('id, sku_code, display_name, unit, department_id, tur, category')
-          .eq('is_archived', false)
-          .or(`display_name.ilike.%${text}%,sku_code.ilike.%${text}%`)
-          .limit(MAX_RESULTS);
-
-        if (departmentId) {
-          req = req.eq('department_id', departmentId);
-        }
-        if (skuType) {
-          // 'tur' ustuni: qiymati 'XOM' (xomashyo) yoki 'MAX' (mahsulot)
-          req = req.eq('tur', skuType);
-        }
-      } else if (entityType === 'customers') {
-        req = supabase
-          .from('customers')
-          .select('id, full_name, phone')
-          .eq('is_archived', false)
-          .ilike('full_name', `%${text}%`)
-          .limit(MAX_RESULTS);
-      } else {
-        throw new Error(`Noma'lum entityType: ${entityType}`);
-      }
-
-      const { data, error: reqError } = await req;
-      if (reqError) throw reqError;
-
-      setResults(data || []);
-      setIsOpen(true);
-    } catch (err) {
-      console.error('SearchSelect qidiruv xatosi:', err);
-      setError(
-        "Qidirishda xatolik: " + (err?.message || "noma'lum xato")
-      );
-      setResults([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [entityType, departmentId, skuType]);
-
-  const handleChange = (e) => {
-    const text = e.target.value;
-    setQuery(text);
-    setBrowseOpen(false);
-
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-
-    if (text.trim().length < MIN_CHARS) {
-      setResults([]);
-      setIsOpen(false);
-      return;
-    }
-
-    debounceRef.current = setTimeout(() => {
-      runSearch(text.trim());
-    }, DEBOUNCE_MS);
-  };
-
-  const handlePick = (item) => {
-    const label = entityType === 'sku_master'
-      ? `${item.sku_code} — ${item.display_name}`
-      : item.full_name;
-
-    setQuery(label);
-    setIsOpen(false);
-    setResults([]);
-    setBrowseOpen(false);
-    if (onSelect) onSelect(item);
-  };
-
-  const handleClear = () => {
-    setQuery('');
-    setResults([]);
-    setIsOpen(false);
-    setBrowseOpen(false);
-    if (onSelect) onSelect(null);
-  };
-
-  const loadBrowseList = useCallback(async () => {
-    setBrowseLoading(true);
-    setBrowseError(null);
+  const loadAllItems = useCallback(async () => {
+    setItemsLoading(true);
+    setItemsError(null);
     try {
       let req;
 
@@ -165,36 +83,82 @@ export default function SearchSelect({
           .eq('is_archived', false)
           .order('category', { ascending: true })
           .order('display_name', { ascending: true })
-          .limit(BROWSE_LIMIT);
+          .limit(FETCH_LIMIT);
 
         if (departmentId) req = req.eq('department_id', departmentId);
         if (skuType) req = req.eq('tur', skuType);
-      } else {
+      } else if (entityType === 'customers') {
         req = supabase
           .from('customers')
           .select('id, full_name, phone')
           .eq('is_archived', false)
           .order('full_name', { ascending: true })
-          .limit(BROWSE_LIMIT);
+          .limit(FETCH_LIMIT);
+      } else {
+        throw new Error(`Noma'lum entityType: ${entityType}`);
       }
 
       const { data, error: reqError } = await req;
       if (reqError) throw reqError;
-      setBrowseRows(data || []);
+      setAllItems(data || []);
     } catch (err) {
       console.error('SearchSelect ro\u2018yxat xatosi:', err);
-      setBrowseError("Ro'yxatni yuklashda xatolik: " + (err?.message || "noma'lum xato"));
-      setBrowseRows([]);
+      setItemsError("Ro'yxatni yuklashda xatolik: " + (err?.message || "noma'lum xato"));
+      setAllItems([]);
     } finally {
-      setBrowseLoading(false);
+      setItemsLoading(false);
     }
   }, [entityType, departmentId, skuType]);
+
+  // Ro'yxat bir marta (komponent ochilganda va filtrlar o'zgarganda) yuklanadi
+  useEffect(() => {
+    loadAllItems();
+  }, [loadAllItems]);
+
+  const results = (() => {
+    const q = query.trim();
+    if (q.length < MIN_CHARS) return [];
+    const matches = allItems.filter((item) => {
+      if (entityType === 'sku_master') {
+        return (
+          matchesSearchQuery(item.display_name, q) ||
+          matchesSearchQuery(item.sku_code, q)
+        );
+      }
+      return matchesSearchQuery(item.full_name, q);
+    });
+    return matches.slice(0, MAX_RESULTS);
+  })();
+
+  const handleChange = (e) => {
+    const text = e.target.value;
+    setQuery(text);
+    setBrowseOpen(false);
+    setIsOpen(text.trim().length >= MIN_CHARS);
+  };
+
+  const handlePick = (item) => {
+    const label = entityType === 'sku_master'
+      ? `${item.sku_code} — ${item.display_name}`
+      : item.full_name;
+
+    setQuery(label);
+    setIsOpen(false);
+    setBrowseOpen(false);
+    if (onSelect) onSelect(item);
+  };
+
+  const handleClear = () => {
+    setQuery('');
+    setIsOpen(false);
+    setBrowseOpen(false);
+    if (onSelect) onSelect(null);
+  };
 
   const handleOpenBrowse = () => {
     setIsOpen(false);
     setBrowseCategory('__all__');
     setBrowseOpen(true);
-    loadBrowseList();
   };
 
   // Tashqariga bosilganda ro'yxatni yopish
@@ -213,7 +177,7 @@ export default function SearchSelect({
   const groupedBrowse = (() => {
     if (entityType !== 'sku_master') return null;
     const groups = {};
-    for (const row of browseRows) {
+    for (const row of allItems) {
       const key = row.category && row.category.trim() ? row.category : '__none__';
       if (!groups[key]) groups[key] = [];
       groups[key].push(row);
@@ -224,8 +188,8 @@ export default function SearchSelect({
   const browseCategoryKeys = groupedBrowse ? Object.keys(groupedBrowse) : [];
 
   const visibleBrowseRows = (() => {
-    if (entityType !== 'sku_master') return browseRows;
-    if (browseCategory === '__all__') return browseRows;
+    if (entityType !== 'sku_master') return allItems;
+    if (browseCategory === '__all__') return allItems;
     return groupedBrowse[browseCategory] || [];
   })();
 
@@ -236,13 +200,12 @@ export default function SearchSelect({
           type="text"
           className="search-select__input"
           value={query}
-          placeholder={placeholder}
+          placeholder={itemsLoading ? 'Yuklanmoqda...' : placeholder}
           onChange={handleChange}
-          onFocus={() => { if (results.length > 0) setIsOpen(true); }}
-          disabled={disabled}
+          onFocus={() => { if (query.trim().length >= MIN_CHARS) setIsOpen(true); }}
+          disabled={disabled || itemsLoading}
         />
-        {isLoading && <span className="search-select__spinner" />}
-        {!isLoading && query && (
+        {!itemsLoading && query && (
           <button
             type="button"
             className="search-select__clear"
@@ -254,7 +217,7 @@ export default function SearchSelect({
         )}
       </div>
 
-      {enableBrowse && !disabled && (
+      {enableBrowse && !disabled && !itemsLoading && (
         <button
           type="button"
           className="search-select__browse-btn"
@@ -264,7 +227,7 @@ export default function SearchSelect({
         </button>
       )}
 
-      {error && <div className="search-select__error">{error}</div>}
+      {itemsError && <div className="search-select__error">{itemsError}</div>}
 
       {isOpen && results.length > 0 && (
         <ul className="search-select__list">
@@ -291,7 +254,7 @@ export default function SearchSelect({
         </ul>
       )}
 
-      {isOpen && !isLoading && results.length === 0 && query.trim().length >= MIN_CHARS && (
+      {isOpen && results.length === 0 && query.trim().length >= MIN_CHARS && (
         <div className="search-select__empty">Hech narsa topilmadi</div>
       )}
 
@@ -325,36 +288,31 @@ export default function SearchSelect({
             </div>
           )}
 
-          {browseLoading && <div className="search-select__empty">Yuklanmoqda...</div>}
-          {browseError && <div className="search-select__error">{browseError}</div>}
-
-          {!browseLoading && !browseError && (
-            <ul className="search-select__list search-select__list--browse">
-              {visibleBrowseRows.length === 0 && (
-                <li className="search-select__empty-inline">Ro'yxat bo'sh</li>
-              )}
-              {visibleBrowseRows.map((item) => (
-                <li
-                  key={item.id}
-                  className="search-select__item"
-                  onClick={() => handlePick(item)}
-                >
-                  {entityType === 'sku_master' ? (
-                    <>
-                      <span className="search-select__code">{item.sku_code}</span>
-                      <span className="search-select__name">{item.display_name}</span>
-                      {item.unit && <span className="search-select__unit">{item.unit}</span>}
-                    </>
-                  ) : (
-                    <>
-                      <span className="search-select__name">{item.full_name}</span>
-                      {item.phone && <span className="search-select__unit">{item.phone}</span>}
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+          <ul className="search-select__list search-select__list--browse">
+            {visibleBrowseRows.length === 0 && (
+              <li className="search-select__empty-inline">Ro'yxat bo'sh</li>
+            )}
+            {visibleBrowseRows.map((item) => (
+              <li
+                key={item.id}
+                className="search-select__item"
+                onClick={() => handlePick(item)}
+              >
+                {entityType === 'sku_master' ? (
+                  <>
+                    <span className="search-select__code">{item.sku_code}</span>
+                    <span className="search-select__name">{item.display_name}</span>
+                    {item.unit && <span className="search-select__unit">{item.unit}</span>}
+                  </>
+                ) : (
+                  <>
+                    <span className="search-select__name">{item.full_name}</span>
+                    {item.phone && <span className="search-select__unit">{item.phone}</span>}
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

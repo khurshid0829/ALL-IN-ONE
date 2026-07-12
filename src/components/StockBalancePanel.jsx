@@ -228,9 +228,8 @@ export default function StockBalancePanel({ departmentId }) {
                 <th>SKU</th>
                 <th>Nomi</th>
                 <th className="dtable-right dtable-group-divider dtable-emphasis">
-                  Joriy qoldiq
+                  Qoldiq
                 </th>
-                <th className="dtable-right">Minimal</th>
                 <th className="dtable-group-divider">Holat</th>
               </tr>
             </thead>
@@ -247,13 +246,10 @@ export default function StockBalancePanel({ departmentId }) {
                         {isExpanded ? '\u25BE' : '\u25B8'}
                       </td>
                       <td>{row.sku_code}</td>
-                      <td>{row.display_name}</td>
+                      <td className="dtable-truncate">{row.display_name}</td>
                       <td className="dtable-right dtable-group-divider dtable-emphasis mono-figure">
                         {formatQty(row.current_qty)}
                         {row.current_qty != null && row.unit ? ` ${row.unit}` : ''}
-                      </td>
-                      <td className="dtable-right mono-figure">
-                        {formatQty(row.min_stock_level)}
                       </td>
                       <td className="dtable-group-divider">
                         {row.min_stock_level == null || row.current_qty == null ? (
@@ -267,7 +263,7 @@ export default function StockBalancePanel({ departmentId }) {
                     </tr>
                     {isExpanded && (
                       <tr className="dtable-detail-row">
-                        <td colSpan={6}>
+                        <td colSpan={5}>
                           <div className="dtable-detail">
                             <span>
                               <strong>Oy boshi:</strong> {formatQty(row.opening_qty)}
@@ -277,6 +273,9 @@ export default function StockBalancePanel({ departmentId }) {
                             </span>
                             <span>
                               <strong>Bu oy chiqim:</strong> {formatQty(row.total_out)}
+                            </span>
+                            <span>
+                              <strong>Minimal:</strong> {formatQty(row.min_stock_level)}
                             </span>
                             {row.avg_daily_out != null && (
                               <span>
