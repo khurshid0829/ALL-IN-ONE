@@ -221,15 +221,24 @@ export default function StockBalancePanel({ departmentId }) {
 
       {!loading && filtered.length > 0 && (
         <div className="dtable-wrap" style={{ maxHeight: 420, overflowY: 'auto' }}>
-          <table className="dtable">
+          <table className="dtable dtable-fixed">
+            <colgroup>
+              <col style={{ width: '4%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '30%' }} />
+              <col style={{ width: '17%' }} />
+              <col style={{ width: '17%' }} />
+              <col style={{ width: '18%' }} />
+            </colgroup>
             <thead>
               <tr>
-                <th style={{ width: 26 }}></th>
+                <th></th>
                 <th>SKU</th>
                 <th>Nomi</th>
                 <th className="dtable-right dtable-group-divider dtable-emphasis">
                   Qoldiq
                 </th>
+                <th className="dtable-right">Kunlik sarf</th>
                 <th className="dtable-group-divider">Holat</th>
               </tr>
             </thead>
@@ -251,6 +260,9 @@ export default function StockBalancePanel({ departmentId }) {
                         {formatQty(row.current_qty)}
                         {row.current_qty != null && row.unit ? ` ${row.unit}` : ''}
                       </td>
+                      <td className="dtable-right mono-figure">
+                        {row.avg_daily_out != null ? formatQty(row.avg_daily_out) : '\u2014'}
+                      </td>
                       <td className="dtable-group-divider">
                         {row.min_stock_level == null || row.current_qty == null ? (
                           <span style={styles.badgeUnknown}>Noma'lum</span>
@@ -263,7 +275,7 @@ export default function StockBalancePanel({ departmentId }) {
                     </tr>
                     {isExpanded && (
                       <tr className="dtable-detail-row">
-                        <td colSpan={5}>
+                        <td colSpan={6}>
                           <div className="dtable-detail">
                             <span>
                               <strong>Oy boshi:</strong> {formatQty(row.opening_qty)}
@@ -277,12 +289,6 @@ export default function StockBalancePanel({ departmentId }) {
                             <span>
                               <strong>Minimal:</strong> {formatQty(row.min_stock_level)}
                             </span>
-                            {row.avg_daily_out != null && (
-                              <span>
-                                <strong>O'rtacha kunlik sarf:</strong>{' '}
-                                {formatQty(row.avg_daily_out)}/kun
-                              </span>
-                            )}
                           </div>
                         </td>
                       </tr>
