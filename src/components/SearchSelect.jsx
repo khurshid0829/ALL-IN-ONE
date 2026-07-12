@@ -66,10 +66,7 @@ export default function SearchSelect({
           req = req.eq('department_id', departmentId);
         }
         if (skuType) {
-          // DIQQAT: "tur" ustuni nomi hali Supabase'da tasdiqlanmagan
-          // (frontendning boshqa joyida ishlatilmagan). Agar bu filtrni
-          // ishlatmoqchi bo'lsangiz, avval jadvaldagi haqiqiy ustun nomini
-          // tekshiring va shu qatorni moslang.
+          // 'tur' ustuni: qiymati 'XOM' (xomashyo) yoki 'MAX' (mahsulot)
           req = req.eq('tur', skuType);
         }
       } else if (entityType === 'customers') {
