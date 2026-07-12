@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import SearchSelect from '../components/SearchSelect'
 import StockBalancePanel from '../components/StockBalancePanel'
 import NumberInput from '../components/NumberInput'
+import CustomDatePicker from '../components/CustomDatePicker'
 import { formatQty } from '../lib/formatNumbers'
 
 function todayIso() {
@@ -170,13 +171,7 @@ export default function WarehouseEntryScreen({
             <div style={styles.row}>
               <div style={styles.field}>
                 <label style={styles.label}>Sana</label>
-                <input
-                  type="date"
-                  value={entryDate}
-                  onChange={(e) => setEntryDate(e.target.value)}
-                  style={styles.input}
-                  required
-                />
+                <CustomDatePicker value={entryDate} onChange={setEntryDate} />
               </div>
               <div style={styles.field}>
                 <label style={styles.label}>Kirim (qty_in)</label>
@@ -240,21 +235,12 @@ export default function WarehouseEntryScreen({
           <div style={styles.headerRow}>
             <h2 style={{ ...styles.panelTitle, margin: 0 }}>So'nggi yozuvlar</h2>
             <div style={styles.dateFilterRow}>
-              <input
-                type="date"
+              <CustomDatePicker
                 value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                style={styles.dateFilterInput}
+                onChange={setDateFilter}
+                placeholder="Barcha sanalar"
+                allowClear
               />
-              {dateFilter && (
-                <button
-                  type="button"
-                  style={styles.refreshBtn}
-                  onClick={() => setDateFilter('')}
-                >
-                  Tozalash
-                </button>
-              )}
             </div>
           </div>
 
