@@ -253,7 +253,7 @@ export default function WarehouseEntryScreen({
                       value={line.expectedQtyOut}
                       onChange={(v) => updateLine(line.key, { expectedQtyOut: v })}
                       style={styles.input}
-                      placeholder="\u2014"
+                      placeholder={'\u2014'}
                     />
                   </div>
                 </div>
