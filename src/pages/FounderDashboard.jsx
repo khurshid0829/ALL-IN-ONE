@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-
-const numberFmt = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 })
+import { formatMoney } from '../lib/formatNumbers'
 
 function som(value) {
-  return numberFmt.format(Number(value) || 0) + ' so\u2018m'
+  return formatMoney(value) + ' so\u2018m'
 }
 
 function usd(value) {
-  return '$' + numberFmt.format(Number(value) || 0)
+  return '$' + formatMoney(value)
 }
 
 export default function FounderDashboard({ onSignOut, onOpenArchive }) {
