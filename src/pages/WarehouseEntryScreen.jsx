@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import SearchSelect from '../components/SearchSelect'
 import StockBalancePanel from '../components/StockBalancePanel'
+import NumberInput from '../components/NumberInput'
 import { formatQty } from '../lib/formatNumbers'
 
 function todayIso() {
@@ -179,24 +180,18 @@ export default function WarehouseEntryScreen({
               </div>
               <div style={styles.field}>
                 <label style={styles.label}>Kirim (qty_in)</label>
-                <input
-                  type="number"
-                  step="any"
-                  min="0"
+                <NumberInput
                   value={qtyIn}
-                  onChange={(e) => setQtyIn(e.target.value)}
+                  onChange={setQtyIn}
                   style={styles.input}
                   placeholder="0"
                 />
               </div>
               <div style={styles.field}>
                 <label style={styles.label}>Chiqim (qty_out)</label>
-                <input
-                  type="number"
-                  step="any"
-                  min="0"
+                <NumberInput
                   value={qtyOut}
-                  onChange={(e) => setQtyOut(e.target.value)}
+                  onChange={setQtyOut}
                   style={styles.input}
                   placeholder="0"
                 />
@@ -207,12 +202,9 @@ export default function WarehouseEntryScreen({
               <label style={styles.label}>
                 Me'yor bo'yicha kutilgan sarf (ixtiyoriy)
               </label>
-              <input
-                type="number"
-                step="any"
-                min="0"
+              <NumberInput
                 value={expectedQtyOut}
-                onChange={(e) => setExpectedQtyOut(e.target.value)}
+                onChange={setExpectedQtyOut}
                 style={styles.input}
                 placeholder="Retsept asosida taqqoslash uchun, majburiy emas"
               />
