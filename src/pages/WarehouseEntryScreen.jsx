@@ -155,10 +155,11 @@ export default function WarehouseEntryScreen({
 
           <form onSubmit={handleSubmit} style={styles.form}>
             <div style={styles.field}>
-              <label style={styles.label}>Mahsulot / Xomashyo</label>
+              <label style={styles.label}>Xomashyo</label>
               <SearchSelect
                 entityType="sku_master"
                 departmentId={departmentId}
+                skuType="XOM"
                 placeholder="Kamida 3 harf yozing..."
                 initialLabel={
                   selectedSku
