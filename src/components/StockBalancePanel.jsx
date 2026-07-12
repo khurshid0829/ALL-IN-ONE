@@ -48,7 +48,7 @@ export default function StockBalancePanel({ departmentId }) {
     const monthKey = currentMonthKey()
     const { startIso, nextMonthStartIso, daysElapsed } = monthDateRange()
 
-    const [skuRes, balanceRes, entriesRes] = await Promise.all([
+    const [skuRes, balanceRes, entriesRes, openingRes] = await Promise.all([
       supabase
         .from('sku_master')
         .select('id, sku_code, display_name, unit, category, min_stock_level, tur')
@@ -70,6 +70,11 @@ export default function StockBalancePanel({ departmentId }) {
         .gte('entry_date', startIso)
         .lt('entry_date', nextMonthStartIso)
         .limit(5000),
+      supabase
+        .from('warehouse_opening')
+        .select('sku_id, opening_qty')
+        .eq('department_id', departmentId)
+        .eq('month_key', monthKey),
     ])
 
     if (skuRes.error) {
@@ -87,9 +92,17 @@ export default function StockBalancePanel({ departmentId }) {
       setLoading(false)
       return
     }
+    if (openingRes.error) {
+      setErrorMsg('Oy boshi qoldig\u2018ini yuklashda xatolik: ' + openingRes.error.message)
+      setLoading(false)
+      return
+    }
 
     const balanceMap = new Map(
       (balanceRes.data || []).map((r) => [r.sku_id, r.current_qty])
+    )
+    const openingMap = new Map(
+      (openingRes.data || []).map((r) => [r.sku_id, r.opening_qty])
     )
 
     // Har bir SKU uchun shu oydagi umumiy kirim/chiqimni yig'amiz
@@ -114,6 +127,7 @@ export default function StockBalancePanel({ departmentId }) {
       return {
         ...sku,
         current_qty: currentQty,
+        opening_qty: openingMap.has(sku.id) ? openingMap.get(sku.id) : null,
         is_low: isLow,
         total_in: totals.totalIn,
         total_out: totals.totalOut,
@@ -200,9 +214,10 @@ export default function StockBalancePanel({ departmentId }) {
               <tr>
                 <th style={styles.th}>SKU</th>
                 <th style={styles.th}>Nomi</th>
-                <th style={styles.thRight}>Joriy qoldiq</th>
+                <th style={styles.thRight}>Oy boshi</th>
                 <th style={styles.thRight}>Bu oy kirim</th>
                 <th style={styles.thRight}>Bu oy chiqim</th>
+                <th style={styles.thRight}>Joriy qoldiq</th>
                 <th style={styles.thRight}>Minimal</th>
                 <th style={styles.th}>Holat</th>
               </tr>
@@ -213,8 +228,7 @@ export default function StockBalancePanel({ departmentId }) {
                   <td style={styles.td}>{row.sku_code}</td>
                   <td style={styles.td}>{row.display_name}</td>
                   <td style={styles.tdRight} className="mono-figure">
-                    {formatQty(row.current_qty)}
-                    {row.current_qty != null && row.unit ? ` ${row.unit}` : ''}
+                    {formatQty(row.opening_qty)}
                   </td>
                   <td style={styles.tdRight} className="mono-figure">
                     {formatQty(row.total_in)}
@@ -226,6 +240,10 @@ export default function StockBalancePanel({ departmentId }) {
                         o'rtacha: {formatQty(row.avg_daily_out)}/kun
                       </div>
                     )}
+                  </td>
+                  <td style={styles.tdRight} className="mono-figure">
+                    {formatQty(row.current_qty)}
+                    {row.current_qty != null && row.unit ? ` ${row.unit}` : ''}
                   </td>
                   <td style={styles.tdRight} className="mono-figure">
                     {formatQty(row.min_stock_level)}
@@ -247,14 +265,13 @@ export default function StockBalancePanel({ departmentId }) {
       )}
 
       <p style={styles.footnote}>
-        Eslatma: "Minimal" ustuni hozircha bo'sh &mdash; uni Bigmanager har bir
-        mahsulot uchun to'ldirgach, "Kam qoldi" ogohlantirishi ishlay boshlaydi.
-        Shuningdek, agar biror mahsulot uchun bu oy uchun ochilish qoldig'i
-        (warehouse_opening) kiritilmagan bo'lsa, Joriy qoldiq "&mdash;" bo'lib
-        ko'rinadi. "Bu oy kirim/chiqim" &mdash; joriy oy boshidan bugungacha
-        yig'ilgan umumiy miqdor. "O'rtacha: .../kun" faqat xomashyo (XOM)
-        turidagi mahsulotlarda ko'rinadi &mdash; joriy oy chiqimining
-        o'tgan kunlar soniga bo'lingan qiymati.
+        Eslatma: "Oy boshi" &mdash; shu oy uchun kiritilgan ochilish qoldig'i
+        (warehouse_opening). "Minimal" ustuni hozircha bo'sh &mdash; uni
+        Bigmanager har bir mahsulot uchun to'ldirgach, "Kam qoldi"
+        ogohlantirishi ishlay boshlaydi. Agar biror mahsulot uchun bu oy
+        uchun ochilish qoldig'i kiritilmagan bo'lsa, "Oy boshi" va "Joriy
+        qoldiq" ustunlari "&mdash;" bo'lib ko'rinadi. "O'rtacha: .../kun"
+        faqat xomashyo (XOM) turidagi mahsulotlarda ko'rinadi.
       </p>
     </div>
   )
