@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import SearchSelect from '../components/SearchSelect'
 import StockBalancePanel from '../components/StockBalancePanel'
+import { formatQty } from '../lib/formatNumbers'
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -293,10 +294,10 @@ export default function WarehouseEntryScreen({
                           : '\u2014'}
                       </td>
                       <td style={styles.tdRight} className="mono-figure">
-                        {row.qty_in ?? 0}
+                        {formatQty(row.qty_in ?? 0)}
                       </td>
                       <td style={styles.tdRight} className="mono-figure">
-                        {row.qty_out ?? 0}
+                        {formatQty(row.qty_out ?? 0)}
                       </td>
                       <td style={styles.td}>{row.note ?? '\u2014'}</td>
                     </tr>
