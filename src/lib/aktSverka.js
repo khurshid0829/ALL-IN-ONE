@@ -79,7 +79,7 @@ export async function loadCustomerLedger(customerId, departmentId, dateFrom, dat
 export async function loadSupplierLedger(supplierId, departmentId, dateFrom, dateTo) {
   const { data, error } = await supabase
     .from('supplier_transactions')
-    .select('id, transaction_date, transaction_type, currency, amount, description')
+    .select('id, transaction_date, transaction_type, currency, amount, amount_som, exchange_rate, description')
     .eq('supplier_id', supplierId)
     .eq('department_id', departmentId)
     .eq('is_archived', false)
@@ -88,52 +88,43 @@ export async function loadSupplierLedger(supplierId, departmentId, dateFrom, dat
   if (error) throw error
 
   const txs = data ?? []
-  const currencies = Array.from(new Set(txs.map((t) => t.currency))).sort()
 
-  if (currencies.length === 0) {
-    return [
-      {
-        currency: 'SOM',
-        title: "Hisob (so'm)",
-        debitLabel: 'Xarid',
-        creditLabel: "To'langan",
-        openingBalance: 0,
-        closingBalance: 0,
-        rows: [],
-      },
-    ]
-  }
+  // Qarz yagona SOM'da yuritiladi (2026-07-13 qarori) — USD tranzaksiyalar
+  // o'sha kungi kursda (amount_som) qo'shiladi, customer_debt_balance
+  // bilan bir xil mantiq.
+  const opening = txs
+    .filter((t) => t.transaction_date < dateFrom)
+    .reduce((sum, t) => sum + (t.transaction_type === 'xarid' ? Number(t.amount_som) : -Number(t.amount_som)), 0)
 
-  return currencies.map((cur) => {
-    const curTxs = txs.filter((t) => t.currency === cur)
-
-    const opening = curTxs
-      .filter((t) => t.transaction_date < dateFrom)
-      .reduce((sum, t) => sum + (t.transaction_type === 'xarid' ? Number(t.amount) : -Number(t.amount)), 0)
-
-    const rows = curTxs
-      .filter((t) => t.transaction_date >= dateFrom && t.transaction_date <= dateTo)
-      .map((t) => ({
+  const rows = txs
+    .filter((t) => t.transaction_date >= dateFrom && t.transaction_date <= dateTo)
+    .map((t) => {
+      const baseLabel = t.transaction_type === 'xarid' ? 'Xarid' : "To'lov"
+      const foreignNote =
+        t.currency === 'USD' ? ` ($${Number(t.amount)}, kurs ${Number(t.exchange_rate)})` : ''
+      return {
         date: t.transaction_date,
-        label: (t.transaction_type === 'xarid' ? 'Xarid' : "To'lov") + (t.description ? ' — ' + t.description : ''),
-        debit: t.transaction_type === 'xarid' ? Number(t.amount) : 0,
-        credit: t.transaction_type === 'tolov' ? Number(t.amount) : 0,
-      }))
-
-    let running = opening
-    rows.forEach((r) => {
-      running += r.debit - r.credit
-      r.balance = running
+        label: baseLabel + foreignNote + (t.description ? ' — ' + t.description : ''),
+        debit: t.transaction_type === 'xarid' ? Number(t.amount_som) : 0,
+        credit: t.transaction_type === 'tolov' ? Number(t.amount_som) : 0,
+      }
     })
 
-    return {
-      currency: cur,
-      title: cur === 'USD' ? 'Hisob (USD)' : "Hisob (so'm)",
+  let running = opening
+  rows.forEach((r) => {
+    running += r.debit - r.credit
+    r.balance = running
+  })
+
+  return [
+    {
+      currency: 'SOM',
+      title: "Hisob (so'm)",
       debitLabel: 'Xarid',
       creditLabel: "To'langan",
       openingBalance: opening,
       closingBalance: running,
       rows,
-    }
-  })
+    },
+  ]
 }

@@ -49,7 +49,6 @@ export default function BigmanagerPanel({
     cashUsd: 0,
     customerDebtSom: 0,
     supplierDebtSom: 0,
-    supplierDebtUsd: 0,
   })
   const [kpiLoading, setKpiLoading] = useState(true)
   const [toast, setToast] = useState(null)
@@ -61,7 +60,7 @@ export default function BigmanagerPanel({
     const [cashRes, customerRes, supplierRes] = await Promise.all([
       supabase.from('cash_current_balance').select('currency, balance_som').eq('department_id', departmentId),
       supabase.from('customer_debt_balance').select('debt_som').eq('department_id', departmentId),
-      supabase.from('supplier_debt_balance').select('currency, debt_amount').eq('department_id', departmentId),
+      supabase.from('supplier_debt_balance').select('debt_som').eq('department_id', departmentId),
     ])
 
     const cashRows = cashRes.data ?? []
@@ -69,12 +68,9 @@ export default function BigmanagerPanel({
     const cashUsd = cashRows.filter((r) => r.currency === 'USD').reduce((s, r) => s + Number(r.balance_som || 0), 0)
 
     const customerDebtSom = (customerRes.data ?? []).reduce((s, r) => s + Number(r.debt_som || 0), 0)
+    const supplierDebtSom = (supplierRes.data ?? []).reduce((s, r) => s + Number(r.debt_som || 0), 0)
 
-    const supplierRows = supplierRes.data ?? []
-    const supplierDebtSom = supplierRows.filter((r) => r.currency === 'SOM').reduce((s, r) => s + Number(r.debt_amount || 0), 0)
-    const supplierDebtUsd = supplierRows.filter((r) => r.currency === 'USD').reduce((s, r) => s + Number(r.debt_amount || 0), 0)
-
-    setKpi({ cashSom, cashUsd, customerDebtSom, supplierDebtSom, supplierDebtUsd })
+    setKpi({ cashSom, cashUsd, customerDebtSom, supplierDebtSom })
     setKpiLoading(false)
   }, [departmentId])
 
@@ -198,7 +194,6 @@ export default function BigmanagerPanel({
           <KpiCard
             label="Yetkazuvchi qarzi"
             primary={kpiLoading ? '—' : som(kpi.supplierDebtSom)}
-            secondary={!kpiLoading && kpi.supplierDebtUsd ? usd(kpi.supplierDebtUsd) : null}
             onClick={() => handleKpiClick('supplierDebt')}
           />
         </div>

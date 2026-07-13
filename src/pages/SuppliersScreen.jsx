@@ -8,19 +8,17 @@ import AktSverkaPanel from '../components/AktSverkaPanel'
 function som(value) {
   return formatMoney(value) + ' so‘m'
 }
-function usd(value) {
-  return '$' + formatMoney(value)
-}
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
 }
 
 /**
- * Yetkazib beruvchilar — bizning qarzimiz (SOM/USD alohida ko'rsatiladi,
- * netto qilinmaydi — DECISIONS.md 2026-07-10 "kassa/qarz valyuta bo'yicha
- * tuzatildi" qaroriga mos) + "Amaliyot" (xarid/to'lov) tezkor kiritish
- * (DECISIONS.md 2026-07-12 maketiga mos).
+ * Yetkazib beruvchilar — bizning qarzimiz (yagona SOM qiymatida,
+ * DECISIONS.md 2026-07-13 qaroriga mos: USD tranzaksiyalar shu kungi
+ * kursda SOM'ga aylantirilib qo'shiladi, mijoz qarzi bilan bir xil
+ * mantiq) + "Amaliyot" (xarid/to'lov) tezkor kiritish (DECISIONS.md
+ * 2026-07-12 maketiga mos).
  *
  * DIQQAT: suppliers/supplier_transactions faqat Bigmanager'ga ochiq
  * (2026-07-11 "5-modul moliyaviy huquqlar" qarori). supplier_debt_balance
@@ -44,7 +42,7 @@ export default function SuppliersScreen({ departmentId, departmentName, appUserI
 
     const [suppliersRes, debtRes] = await Promise.all([
       supabase.from('suppliers').select('id, name, phone, note').eq('department_id', departmentId).eq('is_archived', false).order('name'),
-      supabase.from('supplier_debt_balance').select('supplier_id, currency, debt_amount').eq('department_id', departmentId),
+      supabase.from('supplier_debt_balance').select('supplier_id, debt_som').eq('department_id', departmentId),
     ])
 
     if (suppliersRes.error || debtRes.error) {
@@ -66,9 +64,8 @@ export default function SuppliersScreen({ departmentId, departmentName, appUserI
     const q = search.trim().toLowerCase()
     return suppliers
       .map((s) => {
-        const som_ = debtRows.find((d) => d.supplier_id === s.id && d.currency === 'SOM')
-        const usd_ = debtRows.find((d) => d.supplier_id === s.id && d.currency === 'USD')
-        return { ...s, debtSom: Number(som_?.debt_amount || 0), debtUsd: Number(usd_?.debt_amount || 0) }
+        const debtRow = debtRows.find((d) => d.supplier_id === s.id)
+        return { ...s, debt: Number(debtRow?.debt_som || 0) }
       })
       .filter((s) => (q ? s.name.toLowerCase().includes(q) : true))
   }, [suppliers, debtRows, search])
@@ -137,19 +134,12 @@ export default function SuppliersScreen({ departmentId, departmentName, appUserI
                     {s.phone && <div style={styles.supplierMeta}>{s.phone}</div>}
                   </div>
                   <div style={styles.cardRight}>
-                    <div style={styles.debtCol}>
-                      {s.debtSom !== 0 && (
-                        <span className="mono-figure" style={{ ...styles.debtValue, ...(s.debtSom > 0 ? styles.debtValuePositive : {}) }}>
-                          {som(s.debtSom)}
-                        </span>
-                      )}
-                      {s.debtUsd !== 0 && (
-                        <span className="mono-figure" style={{ ...styles.debtValue, ...(s.debtUsd > 0 ? styles.debtValuePositive : {}) }}>
-                          {usd(s.debtUsd)}
-                        </span>
-                      )}
-                      {s.debtSom === 0 && s.debtUsd === 0 && <span style={styles.debtNone}>Qarz yo'q</span>}
-                    </div>
+                    <span
+                      className="mono-figure"
+                      style={{ ...styles.debtValue, ...(s.debt > 0 ? styles.debtValuePositive : {}) }}
+                    >
+                      {som(s.debt)}
+                    </span>
                     <button
                       type="button"
                       style={styles.secondaryActionBtn}
@@ -549,10 +539,8 @@ const styles = {
   supplierName: { fontSize: 15, fontWeight: 600, color: 'var(--canvas-text)' },
   supplierMeta: { fontSize: 12, color: 'var(--canvas-text-muted)', marginTop: 2 },
   cardRight: { display: 'flex', alignItems: 'center', gap: 14 },
-  debtCol: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 },
   debtValue: { fontSize: 14, color: 'var(--canvas-text-muted)' },
   debtValuePositive: { color: 'var(--danger)', fontWeight: 600 },
-  debtNone: { fontSize: 13, color: 'var(--canvas-text-muted)' },
   txBtn: {
     padding: '7px 14px',
     borderRadius: 'var(--radius-control)',
