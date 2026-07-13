@@ -4,6 +4,7 @@ import { formatMoney } from '../lib/formatNumbers'
 import AccountSwitcher from '../components/AccountSwitcher'
 import MonthlyClosingPanel from '../components/MonthlyClosingPanel'
 import WarehouseEntryScreen from './WarehouseEntryScreen'
+import MovementsFeed from './MovementsFeed'
 
 function som(value) {
   return formatMoney(value) + ' so‘m'
@@ -14,7 +15,7 @@ function usd(value) {
 
 const MODULE_CARDS = [
   { key: 'warehouse', label: 'Ombor', desc: "Xomashyo kirim/chiqim", enabled: true },
-  { key: 'sales', label: 'Nakladnoy / Savdo', desc: 'Yuk harakatlari', enabled: false },
+  { key: 'sales', label: 'Nakladnoy / Savdo', desc: 'Yuk harakatlari', enabled: true },
   { key: 'finance', label: 'Moliya', desc: "Xarajat, yetkazib beruvchi hisobi", enabled: false },
   { key: 'payments', label: "To'lovlar", desc: "Mijoz to'lovlari", enabled: false },
   { key: 'production', label: 'Ishlab chiqarish', desc: 'Kunlik ishlab chiqarish', enabled: false },
@@ -88,6 +89,8 @@ export default function BigmanagerPanel({
     }
     if (card.key === 'warehouse') {
       setSubView('warehouse')
+    } else if (card.key === 'sales') {
+      setSubView('movements')
     } else if (card.key === 'archive') {
       onOpenArchive()
     }
@@ -99,6 +102,17 @@ export default function BigmanagerPanel({
         departmentId={departmentId}
         departmentName={departmentName}
         userId={appUserId}
+        onSignOut={onSignOut}
+        onBack={() => setSubView('main')}
+      />
+    )
+  }
+
+  if (subView === 'movements') {
+    return (
+      <MovementsFeed
+        departmentId={departmentId}
+        departmentName={departmentName}
         onSignOut={onSignOut}
         onBack={() => setSubView('main')}
       />
