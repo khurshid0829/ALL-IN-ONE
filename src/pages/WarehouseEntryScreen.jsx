@@ -42,6 +42,7 @@ export default function WarehouseEntryScreen({
   departmentName,
   userId,
   onSignOut,
+  onBack,
 }) {
   const [entryDate, setEntryDate] = useState(todayIso())
   const [lines, setLines] = useState(() => [makeEmptyLine()])
@@ -179,8 +180,13 @@ export default function WarehouseEntryScreen({
         <span style={styles.brand}>Yagona Boshqaruv Tizimi &middot; Ombor</span>
         <div style={styles.headerRight}>
           <span style={styles.roleTag}>
-            Omborchi &middot; {departmentName ?? '\u2014'}
+            {departmentName ?? '\u2014'}
           </span>
+          {onBack && (
+            <button style={styles.signOutBtn} onClick={onBack}>
+              &larr; Orqaga
+            </button>
+          )}
           <button style={styles.signOutBtn} onClick={onSignOut}>
             Chiqish
           </button>

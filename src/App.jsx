@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAppSession } from './lib/useAppSession'
 import { useMfaStatus } from './lib/useMfaStatus'
+import { useLinkedAccounts } from './lib/useLinkedAccounts'
 import { supabase } from './lib/supabaseClient'
 import Login from './pages/Login'
 import FounderDashboard from './pages/FounderDashboard'
@@ -10,12 +11,14 @@ import MfaChallenge from './pages/MfaChallenge'
 import ArchiveManager from './pages/ArchiveManager'
 import WarehouseEntryScreen from './pages/WarehouseEntryScreen'
 import MenegerScreen from './pages/MenegerScreen'
+import BigmanagerPanel from './pages/BigmanagerPanel'
 
 const MFA_MANDATORY_ROLES = ['Founder', 'Bigmanager']
 
 export default function App() {
   const { session, profile, loading, error } = useAppSession()
   const { mfaLoading, hasVerifiedTotp, needsChallenge, refreshMfaStatus } = useMfaStatus(session)
+  const linkedAccounts = useLinkedAccounts(session, profile)
   const [skippedOptionalSetup, setSkippedOptionalSetup] = useState(false)
   const [view, setView] = useState('main')
 
@@ -80,6 +83,20 @@ export default function App() {
       <FounderDashboard
         onSignOut={handleSignOut}
         onOpenArchive={() => setView('archive')}
+      />
+    )
+  }
+
+  if (profile?.role === 'Bigmanager') {
+    return (
+      <BigmanagerPanel
+        key={profile.appUserId}
+        departmentId={profile.departmentId}
+        departmentName={profile.departmentName}
+        appUserId={profile.appUserId}
+        onSignOut={handleSignOut}
+        onOpenArchive={() => setView('archive')}
+        linkedAccounts={linkedAccounts}
       />
     )
   }

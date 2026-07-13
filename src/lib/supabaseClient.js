@@ -13,3 +13,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+/**
+ * Asosiy `supabase` mijozining faol sessiyasiga tegmasdan, boshqa
+ * hisob (email/parol) bilan kirishni tekshirish uchun vaqtinchalik mijoz.
+ * Account Switcher'da "boshqa hisob qo'shish" oqimida ishlatiladi —
+ * shu tufayli joriy ekran sessiyasi bir lahzaga ham almashib qolmaydi.
+ */
+export function createEphemeralClient() {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+}
