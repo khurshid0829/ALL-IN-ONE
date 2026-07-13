@@ -239,6 +239,8 @@ function TransactionForm({ supplierId, departmentId, appUserId, onSaved, onCance
   const [txDate, setTxDate] = useState(todayIso())
   const [currency, setCurrency] = useState('SOM')
   const [amount, setAmount] = useState('')
+  const [qty, setQty] = useState('')
+  const [unitPrice, setUnitPrice] = useState('')
   const [rate, setRate] = useState(null)
   const [rateLoading, setRateLoading] = useState(false)
   const [manualRate, setManualRate] = useState('')
@@ -266,13 +268,17 @@ function TransactionForm({ supplierId, departmentId, appUserId, onSaved, onCance
     }
   }, [currency, txDate])
 
+  const computedAmount = Number(qty || 0) * Number(unitPrice || 0)
+
   async function handleSubmit(e) {
     e.preventDefault()
     setErrorMsg(null)
 
-    const amountNum = Number(amount)
+    const amountNum = txType === 'xarid' ? computedAmount : Number(amount)
     if (!amountNum || amountNum <= 0) {
-      setErrorMsg("Summani to'g'ri kiriting.")
+      setErrorMsg(
+        txType === 'xarid' ? "Miqdor va narxni to'g'ri kiriting." : "Summani to'g'ri kiriting."
+      )
       return
     }
 
@@ -356,10 +362,23 @@ function TransactionForm({ supplierId, departmentId, appUserId, onSaved, onCance
           </div>
         </div>
 
-        <div style={pfStyles.field}>
-          <label style={pfStyles.label}>Summa</label>
-          <NumberInput value={amount} onChange={setAmount} placeholder="0" style={pfStyles.input} />
-        </div>
+        {txType === 'xarid' ? (
+          <>
+            <div style={pfStyles.field}>
+              <label style={pfStyles.label}>Miqdor</label>
+              <NumberInput value={qty} onChange={setQty} placeholder="masalan 50" style={pfStyles.input} />
+            </div>
+            <div style={pfStyles.field}>
+              <label style={pfStyles.label}>Narx (birlik uchun)</label>
+              <NumberInput value={unitPrice} onChange={setUnitPrice} placeholder="masalan 12000" style={pfStyles.input} />
+            </div>
+          </>
+        ) : (
+          <div style={pfStyles.field}>
+            <label style={pfStyles.label}>Summa</label>
+            <NumberInput value={amount} onChange={setAmount} placeholder="0" style={pfStyles.input} />
+          </div>
+        )}
 
         {txType === 'tolov' && (
           <div style={pfStyles.field}>
@@ -382,6 +401,14 @@ function TransactionForm({ supplierId, departmentId, appUserId, onSaved, onCance
           </div>
         )}
       </div>
+
+      {txType === 'xarid' && computedAmount > 0 && (
+        <div style={pfStyles.rateRow}>
+          <span style={pfStyles.rateHint} className="mono-figure">
+            Jami: {currency === 'USD' ? '$' + formatMoney(computedAmount) : som(computedAmount)}
+          </span>
+        </div>
+      )}
 
       <div style={pfStyles.field}>
         <label style={pfStyles.label}>Izoh (ixtiyoriy)</label>
