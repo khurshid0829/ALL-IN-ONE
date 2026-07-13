@@ -79,7 +79,7 @@ export default function SearchSelect({
       if (entityType === 'sku_master') {
         req = supabase
           .from('sku_master')
-          .select('id, sku_code, display_name, unit, department_id, tur, category')
+          .select('id, sku_code, display_name, unit, department_id, tur, category, sale_price')
           .eq('is_archived', false)
           .order('category', { ascending: true })
           .order('display_name', { ascending: true })
