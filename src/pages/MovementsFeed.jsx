@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { formatMoney, formatQty } from '../lib/formatNumbers'
+import MonthPicker from '../components/MonthPicker'
 
 function som(value) {
   return formatMoney(value) + ' so‘m'
@@ -191,12 +192,7 @@ export default function MovementsFeed({ departmentId, departmentName, onSignOut,
           <div style={styles.filterRow}>
             <div style={styles.field}>
               <label style={styles.label}>Oy</label>
-              <input
-                type="month"
-                value={monthKey}
-                onChange={(e) => setMonthKey(e.target.value)}
-                style={styles.input}
-              />
+              <MonthPicker value={monthKey} onChange={setMonthKey} />
             </div>
             <div style={styles.field}>
               <label style={styles.label}>Mijoz</label>

@@ -157,6 +157,37 @@
   font-weight: 600;
 }
 
+.cdp__month-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.cdp__month-cell {
+  padding: 10px 4px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--canvas-text);
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+
+.cdp__month-cell:hover {
+  background: #efe7d6;
+}
+
+.cdp__month-cell--current {
+  border: 1px solid var(--teal);
+}
+
+.cdp__month-cell--selected {
+  background: var(--copper);
+  color: #fff;
+  font-weight: 600;
+}
+
 .cdp__footer {
   display: flex;
   justify-content: space-between;

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import NumberInput from './NumberInput'
 import CustomDatePicker from './CustomDatePicker'
+import MonthPicker from './MonthPicker'
 import { formatMoney } from '../lib/formatNumbers'
 
 function som(value) {
@@ -124,12 +125,7 @@ export default function MonthlyClosingPanel({ departmentId, appUserId }) {
       <div style={styles.formRow}>
         <div style={styles.field}>
           <label style={styles.label}>Yopiladigan oy</label>
-          <input
-            type="month"
-            value={monthKey}
-            onChange={(e) => setMonthKey(e.target.value)}
-            style={styles.input}
-          />
+          <MonthPicker value={monthKey} onChange={setMonthKey} />
         </div>
 
         <div style={styles.field}>
