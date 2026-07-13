@@ -7,6 +7,7 @@ import WarehouseEntryScreen from './WarehouseEntryScreen'
 import MovementsFeed from './MovementsFeed'
 import CustomersScreen from './CustomersScreen'
 import SuppliersScreen from './SuppliersScreen'
+import KassaScreen from './KassaScreen'
 
 function som(value) {
   return formatMoney(value) + ' so‘m'
@@ -103,6 +104,8 @@ export default function BigmanagerPanel({
       setSubView('customers')
     } else if (key === 'supplierDebt') {
       setSubView('suppliers')
+    } else if (key === 'cash') {
+      setSubView('kassa')
     } else {
       showComingSoon()
     }
@@ -146,6 +149,18 @@ export default function BigmanagerPanel({
   if (subView === 'suppliers') {
     return (
       <SuppliersScreen
+        departmentId={departmentId}
+        departmentName={departmentName}
+        appUserId={appUserId}
+        onSignOut={onSignOut}
+        onBack={() => setSubView('main')}
+      />
+    )
+  }
+
+  if (subView === 'kassa') {
+    return (
+      <KassaScreen
         departmentId={departmentId}
         departmentName={departmentName}
         appUserId={appUserId}
