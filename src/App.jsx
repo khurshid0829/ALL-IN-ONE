@@ -9,6 +9,7 @@ import MfaSetup from './pages/MfaSetup'
 import MfaChallenge from './pages/MfaChallenge'
 import ArchiveManager from './pages/ArchiveManager'
 import WarehouseEntryScreen from './pages/WarehouseEntryScreen'
+import MenegerScreen from './pages/MenegerScreen'
 
 const MFA_MANDATORY_ROLES = ['Founder', 'Bigmanager']
 
@@ -89,6 +90,18 @@ export default function App() {
         departmentId={profile?.departmentId}
         departmentName={profile?.departmentName}
         userId={profile?.appUserId}
+        onSignOut={handleSignOut}
+      />
+    )
+  }
+
+  if (profile?.role === 'Meneger') {
+    return (
+      <MenegerScreen
+        departmentId={profile?.departmentId}
+        departmentName={profile?.departmentName}
+        appUserId={profile?.appUserId}
+        authUserId={session.user.id}
         onSignOut={handleSignOut}
       />
     )
