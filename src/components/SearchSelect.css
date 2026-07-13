@@ -206,3 +206,32 @@
   font-size: 13px;
   list-style: none;
 }
+
+.search-select__multi-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: var(--shell-navy);
+  border: 1px solid var(--copper);
+  border-radius: var(--radius-control);
+  font-size: 12px;
+  color: var(--on-navy);
+}
+
+.search-select__multi-actions button {
+  background: var(--copper);
+  border: none;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.search-select__item input[type='checkbox'] {
+  flex-shrink: 0;
+}

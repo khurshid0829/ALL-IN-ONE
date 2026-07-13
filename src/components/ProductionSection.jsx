@@ -10,12 +10,12 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10)
 }
 
+function makeLineKey() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36)
+}
+
 function makeEmptyLine() {
-  return {
-    key: Math.random().toString(36).slice(2) + Date.now().toString(36),
-    selectedSku: null,
-    quantityProduced: '',
-  }
+  return { key: makeLineKey(), selectedSku: null, quantityProduced: '' }
 }
 
 /**
@@ -77,6 +77,19 @@ export default function ProductionSection({ departmentId, authUserId, onSaved })
 
   function removeLine(key) {
     setLines((prev) => (prev.length > 1 ? prev.filter((l) => l.key !== key) : prev))
+  }
+
+  function addLinesFromMultiSelect(items) {
+    setLines((prev) => {
+      const existingIds = new Set(prev.map((l) => l.selectedSku?.id).filter(Boolean))
+      const newLines = items
+        .filter((item) => !existingIds.has(item.id))
+        .map((item) => ({ key: makeLineKey(), selectedSku: item, quantityProduced: '' }))
+      if (newLines.length === 0) return prev
+
+      const isSingleEmptyLine = prev.length === 1 && !prev[0].selectedSku && !prev[0].quantityProduced
+      return isSingleEmptyLine ? newLines : [...prev, ...newLines]
+    })
   }
 
   function resetFormAfterSubmit() {
@@ -178,6 +191,18 @@ export default function ProductionSection({ departmentId, authUserId, onSaved })
                 placeholder="Ixtiyoriy izoh..."
               />
             </div>
+          </div>
+
+          <div style={styles.field}>
+            <label style={styles.label}>Bir nechta mahsulotni birdaniga belgilab qo'shish</label>
+            <SearchSelect
+              entityType="sku_master"
+              departmentId={departmentId}
+              skuType="MAX"
+              placeholder="Kamida 3 harf yozing yoki ro'yxatdan belgilang..."
+              multiSelect
+              onSelectMultiple={addLinesFromMultiSelect}
+            />
           </div>
 
           {lines.map((line, idx) => (

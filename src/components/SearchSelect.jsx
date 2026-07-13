@@ -36,6 +36,18 @@ import './SearchSelect.css';
  * "Ro'yxatdan tanlash" tugmasi — nomni eslay olmagan foydalanuvchi uchun,
  * to'liq ro'yxatni (sku_master uchun kategoriya bo'yicha guruhlangan holda)
  * ochib, yozmasdan tanlash imkonini beradi.
+ *
+ * KO'P TANLASH REJIMI (multiSelect):
+ *   <SearchSelect
+ *      entityType="sku_master"
+ *      departmentId={departmentId}
+ *      skuType="MAX"
+ *      multiSelect
+ *      onSelectMultiple={(items) => addManyLines(items)}
+ *   />
+ * Bu rejimda har bir qatorda checkbox chiqadi, bosilganda ro'yxat yopilmaydi —
+ * foydalanuvchi bir nechtasini belgilab, "Tanlanganlarni qo'shish" tugmasi
+ * bilan bir martada qaytaradi (onSelectMultiple butun elementlar massivini oladi).
  */
 
 const MIN_CHARS = 3;
@@ -58,11 +70,14 @@ export default function SearchSelect({
   onSelect,
   disabled = false,
   enableBrowse = true, // "Ro'yxatdan tanlash" tugmasini ko'rsatish/yashirish
+  multiSelect = false, // true bo'lsa: checkbox bilan bir nechtasini tanlash rejimi
+  onSelectMultiple,    // multiSelect=true bo'lsa chaqiriladi: (items[]) => void
 }) {
   const [query, setQuery] = useState(initialLabel);
   const [isOpen, setIsOpen] = useState(false);
   const [browseOpen, setBrowseOpen] = useState(false);
   const [browseCategory, setBrowseCategory] = useState('__all__');
+  const [pendingSelected, setPendingSelected] = useState(() => new Map());
 
   const [allItems, setAllItems] = useState([]);
   const [itemsLoading, setItemsLoading] = useState(true);
@@ -161,6 +176,28 @@ export default function SearchSelect({
     setBrowseOpen(true);
   };
 
+  const toggleChecked = (item) => {
+    setPendingSelected((prev) => {
+      const next = new Map(prev);
+      if (next.has(item.id)) next.delete(item.id);
+      else next.set(item.id, item);
+      return next;
+    });
+  };
+
+  const handleConfirmMultiple = () => {
+    if (onSelectMultiple) onSelectMultiple(Array.from(pendingSelected.values()));
+    setPendingSelected(new Map());
+    setQuery('');
+    setIsOpen(false);
+    setBrowseOpen(false);
+  };
+
+  const handleItemClick = (item) => {
+    if (multiSelect) toggleChecked(item);
+    else handlePick(item);
+  };
+
   // Tashqariga bosilganda ro'yxatni yopish
   useEffect(() => {
     function handleClickOutside(e) {
@@ -229,14 +266,30 @@ export default function SearchSelect({
 
       {itemsError && <div className="search-select__error">{itemsError}</div>}
 
+      {multiSelect && pendingSelected.size > 0 && (
+        <div className="search-select__multi-actions">
+          <span>{pendingSelected.size} ta tanlandi</span>
+          <button type="button" onClick={handleConfirmMultiple}>
+            Tanlanganlarni qo'shish
+          </button>
+        </div>
+      )}
+
       {isOpen && results.length > 0 && (
         <ul className="search-select__list">
           {results.map((item) => (
             <li
               key={item.id}
               className="search-select__item"
-              onClick={() => handlePick(item)}
+              onClick={() => handleItemClick(item)}
             >
+              {multiSelect && (
+                <input
+                  type="checkbox"
+                  checked={pendingSelected.has(item.id)}
+                  readOnly
+                />
+              )}
               {entityType === 'sku_master' ? (
                 <>
                   <span className="search-select__code">{item.sku_code}</span>
@@ -296,8 +349,15 @@ export default function SearchSelect({
               <li
                 key={item.id}
                 className="search-select__item"
-                onClick={() => handlePick(item)}
+                onClick={() => handleItemClick(item)}
               >
+                {multiSelect && (
+                  <input
+                    type="checkbox"
+                    checked={pendingSelected.has(item.id)}
+                    readOnly
+                  />
+                )}
                 {entityType === 'sku_master' ? (
                   <>
                     <span className="search-select__code">{item.sku_code}</span>
