@@ -5,6 +5,7 @@ import AccountSwitcher from '../components/AccountSwitcher'
 import MonthlyClosingPanel from '../components/MonthlyClosingPanel'
 import WarehouseEntryScreen from './WarehouseEntryScreen'
 import MovementsFeed from './MovementsFeed'
+import CustomersScreen from './CustomersScreen'
 
 function som(value) {
   return formatMoney(value) + ' so‘m'
@@ -80,11 +81,15 @@ export default function BigmanagerPanel({
     loadKpi()
   }, [loadKpi])
 
+  function showComingSoon() {
+    setToast("Bu modul keyingi bosqichda qo'shiladi.")
+    window.clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = window.setTimeout(() => setToast(null), 2500)
+  }
+
   function handleCardClick(card) {
     if (!card.enabled) {
-      setToast("Bu modul keyingi bosqichda qo'shiladi.")
-      window.clearTimeout(toastTimerRef.current)
-      toastTimerRef.current = window.setTimeout(() => setToast(null), 2500)
+      showComingSoon()
       return
     }
     if (card.key === 'warehouse') {
@@ -93,6 +98,14 @@ export default function BigmanagerPanel({
       setSubView('movements')
     } else if (card.key === 'archive') {
       onOpenArchive()
+    }
+  }
+
+  function handleKpiClick(key) {
+    if (key === 'customerDebt') {
+      setSubView('customers')
+    } else {
+      showComingSoon()
     }
   }
 
@@ -113,6 +126,18 @@ export default function BigmanagerPanel({
       <MovementsFeed
         departmentId={departmentId}
         departmentName={departmentName}
+        onSignOut={onSignOut}
+        onBack={() => setSubView('main')}
+      />
+    )
+  }
+
+  if (subView === 'customers') {
+    return (
+      <CustomersScreen
+        departmentId={departmentId}
+        departmentName={departmentName}
+        appUserId={appUserId}
         onSignOut={onSignOut}
         onBack={() => setSubView('main')}
       />
@@ -148,15 +173,18 @@ export default function BigmanagerPanel({
             label="Kassa"
             primary={kpiLoading ? '—' : som(kpi.cashSom)}
             secondary={!kpiLoading && kpi.cashUsd ? usd(kpi.cashUsd) : null}
+            onClick={() => handleKpiClick('cash')}
           />
           <KpiCard
             label="Mijoz qarzi"
             primary={kpiLoading ? '—' : som(kpi.customerDebtSom)}
+            onClick={() => handleKpiClick('customerDebt')}
           />
           <KpiCard
             label="Yetkazuvchi qarzi"
             primary={kpiLoading ? '—' : som(kpi.supplierDebtSom)}
             secondary={!kpiLoading && kpi.supplierDebtUsd ? usd(kpi.supplierDebtUsd) : null}
+            onClick={() => handleKpiClick('supplierDebt')}
           />
         </div>
 
@@ -186,13 +214,13 @@ export default function BigmanagerPanel({
   )
 }
 
-function KpiCard({ label, primary, secondary }) {
+function KpiCard({ label, primary, secondary, onClick }) {
   return (
-    <div style={styles.kpiCard}>
+    <button type="button" style={styles.kpiCard} onClick={onClick}>
       <span style={styles.kpiLabel}>{label}</span>
       <span className="mono-figure" style={styles.kpiValue}>{primary}</span>
       {secondary && <span className="mono-figure" style={styles.kpiSecondary}>{secondary}</span>}
-    </div>
+    </button>
   )
 }
 
@@ -235,6 +263,10 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: 4,
+    border: 'none',
+    cursor: 'pointer',
+    textAlign: 'left',
+    font: 'inherit',
   },
   kpiLabel: { fontSize: 12, color: 'var(--canvas-text-muted)', letterSpacing: '0.02em' },
   kpiValue: { fontSize: 22, fontWeight: 600, color: 'var(--canvas-text)' },
