@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import CustomDatePicker from '../components/CustomDatePicker'
 import NumberInput from '../components/NumberInput'
 import { formatMoney } from '../lib/formatNumbers'
+import AktSverkaPanel from '../components/AktSverkaPanel'
 
 function som(value) {
   return formatMoney(value) + ' so‘m'
@@ -34,6 +35,7 @@ export default function SuppliersScreen({ departmentId, departmentName, appUserI
 
   const [search, setSearch] = useState('')
   const [openTxFor, setOpenTxFor] = useState(null)
+  const [openAktFor, setOpenAktFor] = useState(null)
   const [showAddSupplier, setShowAddSupplier] = useState(false)
 
   const loadData = useCallback(async () => {
@@ -150,6 +152,13 @@ export default function SuppliersScreen({ departmentId, departmentName, appUserI
                     </div>
                     <button
                       type="button"
+                      style={styles.secondaryActionBtn}
+                      onClick={() => setOpenAktFor(openAktFor === s.id ? null : s.id)}
+                    >
+                      {openAktFor === s.id ? 'Yopish' : 'Akt sverka'}
+                    </button>
+                    <button
+                      type="button"
                       style={styles.txBtn}
                       onClick={() => setOpenTxFor(openTxFor === s.id ? null : s.id)}
                     >
@@ -165,6 +174,17 @@ export default function SuppliersScreen({ departmentId, departmentName, appUserI
                     appUserId={appUserId}
                     onSaved={handleSaved}
                     onCancel={() => setOpenTxFor(null)}
+                  />
+                )}
+
+                {openAktFor === s.id && (
+                  <AktSverkaPanel
+                    entityType="supplier"
+                    entityId={s.id}
+                    entityName={s.name}
+                    departmentId={departmentId}
+                    departmentName={departmentName}
+                    onClose={() => setOpenAktFor(null)}
                   />
                 )}
               </div>
@@ -542,6 +562,16 @@ const styles = {
     cursor: 'pointer',
     fontSize: 13,
     fontWeight: 600,
+    whiteSpace: 'nowrap',
+  },
+  secondaryActionBtn: {
+    padding: '7px 14px',
+    borderRadius: 'var(--radius-control)',
+    border: '1px solid var(--shell-line)',
+    background: 'transparent',
+    color: 'var(--canvas-text-muted)',
+    cursor: 'pointer',
+    fontSize: 13,
     whiteSpace: 'nowrap',
   },
 }

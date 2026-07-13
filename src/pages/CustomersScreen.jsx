@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient'
 import CustomDatePicker from '../components/CustomDatePicker'
 import NumberInput from '../components/NumberInput'
 import { formatMoney } from '../lib/formatNumbers'
+import AktSverkaPanel from '../components/AktSverkaPanel'
 
 function som(value) {
   return formatMoney(value) + ' so‘m'
@@ -36,6 +37,7 @@ export default function CustomersScreen({ departmentId, departmentName, appUserI
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [openPaymentFor, setOpenPaymentFor] = useState(null)
+  const [openAktFor, setOpenAktFor] = useState(null)
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -144,6 +146,13 @@ export default function CustomersScreen({ departmentId, departmentName, appUserI
                     </span>
                     <button
                       type="button"
+                      style={styles.secondaryActionBtn}
+                      onClick={() => setOpenAktFor(openAktFor === c.id ? null : c.id)}
+                    >
+                      {openAktFor === c.id ? 'Yopish' : 'Akt sverka'}
+                    </button>
+                    <button
+                      type="button"
                       style={styles.paymentBtn}
                       onClick={() => setOpenPaymentFor(openPaymentFor === c.id ? null : c.id)}
                     >
@@ -159,6 +168,17 @@ export default function CustomersScreen({ departmentId, departmentName, appUserI
                     appUserId={appUserId}
                     onSaved={handlePaymentSaved}
                     onCancel={() => setOpenPaymentFor(null)}
+                  />
+                )}
+
+                {openAktFor === c.id && (
+                  <AktSverkaPanel
+                    entityType="customer"
+                    entityId={c.id}
+                    entityName={c.full_name}
+                    departmentId={departmentId}
+                    departmentName={departmentName}
+                    onClose={() => setOpenAktFor(null)}
                   />
                 )}
               </div>
@@ -420,6 +440,16 @@ const styles = {
     cursor: 'pointer',
     fontSize: 13,
     fontWeight: 600,
+    whiteSpace: 'nowrap',
+  },
+  secondaryActionBtn: {
+    padding: '7px 14px',
+    borderRadius: 'var(--radius-control)',
+    border: '1px solid var(--shell-line)',
+    background: 'transparent',
+    color: 'var(--canvas-text-muted)',
+    cursor: 'pointer',
+    fontSize: 13,
     whiteSpace: 'nowrap',
   },
 }
