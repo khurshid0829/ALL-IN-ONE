@@ -6,6 +6,7 @@ import MonthlyClosingPanel from '../components/MonthlyClosingPanel'
 import WarehouseEntryScreen from './WarehouseEntryScreen'
 import MovementsFeed from './MovementsFeed'
 import CustomersScreen from './CustomersScreen'
+import SuppliersScreen from './SuppliersScreen'
 
 function som(value) {
   return formatMoney(value) + ' so‘m'
@@ -104,6 +105,8 @@ export default function BigmanagerPanel({
   function handleKpiClick(key) {
     if (key === 'customerDebt') {
       setSubView('customers')
+    } else if (key === 'supplierDebt') {
+      setSubView('suppliers')
     } else {
       showComingSoon()
     }
@@ -135,6 +138,18 @@ export default function BigmanagerPanel({
   if (subView === 'customers') {
     return (
       <CustomersScreen
+        departmentId={departmentId}
+        departmentName={departmentName}
+        appUserId={appUserId}
+        onSignOut={onSignOut}
+        onBack={() => setSubView('main')}
+      />
+    )
+  }
+
+  if (subView === 'suppliers') {
+    return (
+      <SuppliersScreen
         departmentId={departmentId}
         departmentName={departmentName}
         appUserId={appUserId}
