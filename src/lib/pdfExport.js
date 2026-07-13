@@ -46,32 +46,56 @@ export function exportAktSverkaPdf({ entityName, departmentName, dateFrom, dateT
 
   sections.forEach((section) => {
     doc.setFontSize(12)
+    doc.setTextColor(0)
     doc.text(sanitizeForPdf(section.title), marginX, y)
 
-    const body = section.rows.map((r) => [
+    const openingRow = [
+      '',
+      sanitizeForPdf('Davr boshiga qoldiq'),
+      '',
+      '',
+      fmtAmount(section.openingBalance, section.currency),
+    ]
+    const dataRows = section.rows.map((r) => [
       r.date,
       sanitizeForPdf(r.label),
       r.debit ? fmtAmount(r.debit, section.currency) : '',
       r.credit ? fmtAmount(r.credit, section.currency) : '',
       fmtAmount(r.balance, section.currency),
     ])
+    const closingRow = [
+      '',
+      sanitizeForPdf('Davr oxiriga qoldiq'),
+      '',
+      '',
+      fmtAmount(section.closingBalance, section.currency),
+    ]
+
+    // "foot" mexanizmi o'rniga oddiy qator sifatida qo'shildi va
+    // didParseCell orqali ajratib bo'yaladi — bu ishonchliroq ishlaydi.
+    const allRows = [openingRow, ...dataRows, closingRow]
+    const closingRowIndex = allRows.length - 1
 
     autoTable(doc, {
       startY: y + 10,
       margin: { left: marginX, right: marginX },
       head: [['Sana', 'Izoh', sanitizeForPdf(section.debitLabel), sanitizeForPdf(section.creditLabel), 'Qoldiq']],
-      body: [
-        ['', sanitizeForPdf('Davr boshiga qoldiq'), '', '', fmtAmount(section.openingBalance, section.currency)],
-        ...body,
-      ],
-      foot: [['', sanitizeForPdf('Davr oxiriga qoldiq'), '', '', fmtAmount(section.closingBalance, section.currency)]],
-      styles: { font: 'helvetica', fontSize: 9, cellPadding: 5 },
-      headStyles: { fillColor: [181, 101, 29] },
-      footStyles: { fillColor: [244, 239, 228], textColor: [34, 29, 22], fontStyle: 'bold' },
+      body: allRows,
+      styles: { font: 'helvetica', fontSize: 9, cellPadding: 5, overflow: 'linebreak' },
+      headStyles: { fillColor: [181, 101, 29], textColor: [255, 255, 255] },
       columnStyles: {
-        2: { halign: 'right' },
-        3: { halign: 'right' },
-        4: { halign: 'right' },
+        0: { cellWidth: 60 },
+        1: { cellWidth: 190 },
+        2: { cellWidth: 85, halign: 'right' },
+        3: { cellWidth: 85, halign: 'right' },
+        4: { cellWidth: 95, halign: 'right' },
+      },
+      didParseCell: (data) => {
+        if (data.row.index === 0 || data.row.index === closingRowIndex) {
+          data.cell.styles.fillColor = [244, 239, 228]
+          data.cell.styles.textColor = [34, 29, 22]
+          data.cell.styles.fontStyle = 'bold'
+        }
       },
     })
 
