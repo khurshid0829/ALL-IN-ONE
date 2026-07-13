@@ -207,29 +207,19 @@ export default function KassaScreen({ departmentId, departmentName, appUserId, o
       </header>
 
       <main style={styles.main}>
-        <div style={styles.kpiRow}>
-          <div style={styles.kpiCard}>
-            <span style={styles.kpiLabel}>Naqd</span>
-            <span className="mono-figure" style={styles.kpiValue}>
-              {balLoading ? '—' : som(balanceFor('naqd', 'SOM'))}
-            </span>
-            {!balLoading && balanceFor('naqd', 'USD') !== 0 && (
-              <span className="mono-figure" style={styles.kpiSecondary}>
-                {usd(balanceFor('naqd', 'USD'))}
-              </span>
-            )}
-          </div>
-          <div style={styles.kpiCard}>
-            <span style={styles.kpiLabel}>Bank</span>
-            <span className="mono-figure" style={styles.kpiValue}>
-              {balLoading ? '—' : som(balanceFor('bank', 'SOM'))}
-            </span>
-            {!balLoading && balanceFor('bank', 'USD') !== 0 && (
-              <span className="mono-figure" style={styles.kpiSecondary}>
-                {usd(balanceFor('bank', 'USD'))}
-              </span>
-            )}
-          </div>
+        <div style={styles.accountsGrid}>
+          <AccountCard
+            label="Naqd"
+            icon={<CashIcon />}
+            somValue={balLoading ? null : balanceFor('naqd', 'SOM')}
+            usdValue={balLoading ? null : balanceFor('naqd', 'USD')}
+          />
+          <AccountCard
+            label="Bank"
+            icon={<BankIcon />}
+            somValue={balLoading ? null : balanceFor('bank', 'SOM')}
+            usdValue={balLoading ? null : balanceFor('bank', 'USD')}
+          />
         </div>
 
         <div style={styles.actionsRow}>
@@ -290,27 +280,99 @@ export default function KassaScreen({ departmentId, departmentName, appUserId, o
         )}
 
         {!feedLoading && visibleFeed.length > 0 && (
-          <div style={styles.feedList}>
-            {visibleFeed.map((r, idx) => (
-              <div key={idx} style={styles.feedRow}>
-                <div style={styles.feedLeft}>
-                  <span style={styles.feedDate}>{r.date}</span>
-                  <span style={styles.feedLabel}>{r.label}</span>
-                  <span style={styles.feedTag}>{r.accountType === 'naqd' ? 'Naqd' : 'Bank'}</span>
+          <div style={styles.feedGroups}>
+            {groupByDate(visibleFeed).map(([date, dayRows]) => (
+              <div key={date} style={styles.dateGroup}>
+                <div style={styles.dateHeader}>{date}</div>
+                <div style={styles.feedList}>
+                  {dayRows.map((r, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        ...styles.feedRow,
+                        ...(idx === dayRows.length - 1 ? { borderBottom: 'none' } : {}),
+                      }}
+                    >
+                      <div style={styles.feedLeft}>
+                        <span
+                          style={{
+                            ...styles.feedDot,
+                            background: r.amount >= 0 ? 'var(--teal)' : 'var(--danger)',
+                          }}
+                        />
+                        <span style={styles.feedLabel}>{r.label}</span>
+                        <span style={styles.feedTag}>{r.accountType === 'naqd' ? 'Naqd' : 'Bank'}</span>
+                      </div>
+                      <span
+                        className="mono-figure"
+                        style={{ ...styles.feedAmount, ...(r.amount >= 0 ? styles.feedAmountPositive : styles.feedAmountNegative) }}
+                      >
+                        {r.amount >= 0 ? '+' : '−'}
+                        {r.currency === 'USD' ? usd(Math.abs(r.amount)) : som(Math.abs(r.amount))}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                <span
-                  className="mono-figure"
-                  style={{ ...styles.feedAmount, ...(r.amount >= 0 ? styles.feedAmountPositive : styles.feedAmountNegative) }}
-                >
-                  {r.amount >= 0 ? '+' : '−'}
-                  {r.currency === 'USD' ? usd(Math.abs(r.amount)) : som(Math.abs(r.amount))}
-                </span>
               </div>
             ))}
           </div>
         )}
       </main>
     </div>
+  )
+}
+
+function groupByDate(rows) {
+  const map = new Map()
+  for (const row of rows) {
+    if (!map.has(row.date)) map.set(row.date, [])
+    map.get(row.date).push(row)
+  }
+  return Array.from(map.entries())
+}
+
+function AccountCard({ label, icon, somValue, usdValue }) {
+  return (
+    <div style={styles.accountCard}>
+      <div style={styles.accountHeader}>
+        <span style={styles.accountIconWrap}>{icon}</span>
+        <span style={styles.accountTitle}>{label}</span>
+      </div>
+      <div style={styles.currencyGrid}>
+        <div style={styles.currencyTile}>
+          <span style={styles.currencyLabel}>SOM</span>
+          <span className="mono-figure" style={styles.currencyValue}>
+            {somValue === null ? '—' : formatMoney(somValue)}
+          </span>
+        </div>
+        <div style={{ ...styles.currencyTile, ...styles.currencyTileUsd }}>
+          <span style={styles.currencyLabel}>USD</span>
+          <span className="mono-figure" style={styles.currencyValue}>
+            {usdValue === null ? '—' : '$' + formatMoney(usdValue)}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CashIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <rect x="2.5" y="6" width="19" height="12" rx="2" stroke="currentColor" strokeWidth="1.6" />
+      <circle cx="12" cy="12" r="2.8" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M5.5 9V15M18.5 9V15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function BankIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M3 9.5L12 4L21 9.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4.5 9.5V18M9 9.5V18M15 9.5V18M19.5 9.5V18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M2.5 20.5H21.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
   )
 }
 
@@ -613,21 +675,45 @@ const styles = {
     flexDirection: 'column',
     gap: 18,
   },
-  kpiRow: { display: 'flex', gap: 16, flexWrap: 'wrap' },
-  kpiCard: {
-    flex: 1,
-    minWidth: 200,
+  accountsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+    gap: 16,
+  },
+  accountCard: {
     background: 'var(--canvas)',
     borderRadius: 'var(--radius-panel)',
     boxShadow: 'var(--shadow-panel)',
-    padding: '16px 20px',
+    padding: '18px 20px 20px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 14,
+  },
+  accountHeader: { display: 'flex', alignItems: 'center', gap: 10 },
+  accountIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    background: 'var(--copper-soft)',
+    color: '#6b3d1a',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accountTitle: { fontSize: 15, fontWeight: 600, color: 'var(--canvas-text)' },
+  currencyGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
+  currencyTile: {
+    background: 'var(--canvas-raised)',
+    border: '1px solid #e6dcc7',
+    borderRadius: 10,
+    padding: '10px 12px',
     display: 'flex',
     flexDirection: 'column',
     gap: 4,
   },
-  kpiLabel: { fontSize: 12, color: 'var(--canvas-text-muted)', letterSpacing: '0.02em' },
-  kpiValue: { fontSize: 22, fontWeight: 600, color: 'var(--canvas-text)' },
-  kpiSecondary: { fontSize: 13, color: 'var(--copper)' },
+  currencyTileUsd: { borderLeft: '3px solid var(--teal)' },
+  currencyLabel: { fontSize: 11, color: 'var(--canvas-text-muted)', letterSpacing: '0.04em' },
+  currencyValue: { fontSize: 17, fontWeight: 600, color: 'var(--canvas-text)' },
   actionsRow: { display: 'flex', gap: 10 },
   actionBtn: {
     padding: '10px 18px',
@@ -691,20 +777,31 @@ const styles = {
   },
   statusText: { color: 'var(--on-navy-muted)' },
   emptyText: { color: 'var(--on-navy-muted)', fontSize: 14 },
-  feedList: { display: 'flex', flexDirection: 'column', gap: 8 },
-  feedRow: {
+  feedGroups: { display: 'flex', flexDirection: 'column', gap: 16 },
+  dateGroup: { display: 'flex', flexDirection: 'column', gap: 8 },
+  dateHeader: {
+    color: 'var(--on-navy-muted)',
+    fontSize: 12,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+  },
+  feedList: {
     background: 'var(--canvas)',
     borderRadius: 'var(--radius-panel)',
     boxShadow: 'var(--shadow-panel)',
+    overflow: 'hidden',
+  },
+  feedRow: {
     padding: '12px 16px',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 10,
     flexWrap: 'wrap',
+    borderBottom: '1px solid #efe7d6',
   },
   feedLeft: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  feedDate: { fontSize: 12, color: 'var(--canvas-text-muted)' },
+  feedDot: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 },
   feedLabel: { fontSize: 13, color: 'var(--canvas-text)' },
   feedTag: {
     fontSize: 11,
